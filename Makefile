@@ -21,7 +21,7 @@ otest: $(PROJECT_OBJS) $(HTSLIB)
 	$(LINK.cpp) -o $@ $^ $(LDFLAGS)
 
 test:
-	time python3 jc.py ~/data/hg38.fa ~/data/51*2M.bam > 512-4testcall.txt
+	time python3 jc.py ~/data/Homo_sapiens_assembly38.fasta.gz ~/data/HG0051*chr22.cram > test/512-4_chr22_testcall.txt
 	python3 benchmark.py
 
 $(HTSLIB): htslib/*

@@ -2,6 +2,44 @@ import pysam
 import sys
 import time
 from globals import *
+
+class Evidence:
+    CombinePercentage=0.75
+    def __init__(self):
+        self.Data=[]
+        self.Spread=(0,0)
+    
+    def addData(self,Type, Data):#Type: 0: DR cluster, 
+        self.Data.append((Type,Data))
+        self.calculateSpread()
+    
+    def calculateSpread(self):
+        self.Spread=None
+        for Datum in self.Data:
+            if Datum[0]==0:
+                if self.Spread==None:
+                    self.Spread=(Datum[1].Start,Datum[1].End)
+                else:
+                    self.Spread=(min(self.Spread[0],Datum[1].Start),max(self.Spread[1],Datum[1].End))
+    def combineEvidence(self, other):#return: 0: not combine, 1: combine, -1: not overlap
+        if self.Spread[0]<other.Spread[1] and self.Spread[0]>other.Spread[0]:
+            Overlap=min(other.Spread[1]-self.Spread[0],self.Spread[1]-self.Spread[0])
+        elif self.Spread[1]>other.Spread[0] and self.Spread[1]<other.Spread[0]:
+            Overlap=self.Spread[1]-other.Spread[0]
+        elif other.Spread[0]>self.Spread[0] and other.Spread[0]<self.Spread[1]:#self covers other
+            Overlap=other.Spread[1]-other.Spread[0]
+        else:
+            Overlap=0
+            return -1
+        MinLength=min(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
+        Overlap=Overlap/MinLength if MinLength!=0 else 0
+        if Overlap>=CombinePercentage:
+            self.Data+=other.Data
+            self.Spread=(min(self.Spread[0],other.Spread[0]),max(self.Spread[1],other.Spread[1]))
+            return 1
+        return 0
+
+
 class PairInfo:
     LMapped=0x1
     LReversed=0x2
@@ -96,22 +134,7 @@ def linked(Pair1, Pair2):
             return False
         if abs(Pair1.Start-Pair2.Start)<3*ISSD and abs(Pair1.End-Pair2.End)<3*ISSD\
             and (Pair1.NMapped!=2 or (Pair1.NMapped==2 and Pair1.LEnd<=Pair2.RStart and Pair2.LEnd<=Pair1.RStart)):
-            AIS=int((Pair1.InsertionSize+Pair2.InsertionSize)/2.0)
-            InferredVariationSize=abs(AIS-MedianInsertionSize)
-            ABS=int((MedianInsertionSize-Pair1.LLength-Pair1.RLength+MedianInsertionSize-Pair2.LLength-Pair2.RLength)/2.0)
-            if Pair1.InsertionSize<MedianInsertionSize and Pair2.InsertionSize<MedianInsertionSize:
-                PossibleInterval=ABS+3*ISSD-InferredVariationSize
-                if PossibleInterval<0:
-                    return False
-                if abs(Pair1.LEnd-Pair2.LEnd)<PossibleInterval and abs(Pair1.RStart-Pair2.RStart)<PossibleInterval:
-                    return True
-            else:
-                PossibleInterval=ABS+3*ISSD
-                if PossibleInterval<0:
-                    return False
-                if abs(Pair1.LEnd-Pair2.LEnd)<PossibleInterval and abs(Pair1.RStart-Pair2.RStart)<PossibleInterval:
-                    return True
-            return False
+            return True
         return False
     else:
         return False
@@ -170,16 +193,28 @@ def getTidByCord(Cordinate):
         i+=1
     return i-1
 
+def getScore(E):
+    Score=0
+    U=0
+    N=0
+    for d in E:
+        if d[0]==0:
+            for c in d[1]:
+                for r in Cluster[2]:
+                    U+=r.InsertionSize
+                N+=len(c[2])
+    return 0
+
 def callSV(ReferenceFile,Cluster):
     SV=""
     U=0
     if Cluster[2][0].NMapped!=2:
         return ""
-    if len(Cluster[2])<5:
+    if len(Cluster[2])<0:
         return ""
     for r in Cluster[2]:
         U+=r.InsertionSize
-    U=(float(U)/len(Cluster)-MedianInsertionSize)/ISSD*float(len(Cluster))**0.5#U~N(0,1)
+    U=(float(U)/len(Cluster[2])-MedianInsertionSize)/ISSD*float(len(Cluster[2]))**0.5#U~N(0,1)
     BKL=Cluster[0]
     BKR=Cluster[1]
     for r in Cluster[2]:
@@ -194,6 +229,30 @@ def callSV(ReferenceFile,Cluster):
         SV+=", Breakpoint:[%s,%s]"%(ReferenceFile.references[getTidByCord(BKL)]+":"+str(1+BKL-RefStartPos[getTidByCord(BKL)]),ReferenceFile.references[getTidByCord(BKR)]+":"+str(1+BKR-RefStartPos[getTidByCord(BKR)]))
     return SV
 
+def makeDRCEvidences(DRClusters):
+    Evidences=[]
+    EI=-1
+    for i in range(len(DRClusters)):
+        if DRClusters[i]!=None:
+            Temp=Evidence()
+            Temp.addData(0,DRClusters[i])
+            Evidences.append(Temp)
+            EI+=1
+        else:
+            continue
+        for j in range(i+1,len(DRClusters)):
+            if DRClusters[j]!=None:
+                Temp=Evidence()
+                Temp.addData(0,DRClusters[j])
+            else:
+                continue
+            CResult=Evidences[EI].combineEvidence(Temp)
+            if CResult==-1:
+                break
+            elif CResult==1:
+                DRClusters[j]=None
+    return Evidences
+
 ReferenceFile=pysam.FastaFile(sys.argv[1])
 PosCount=0
 for tid in range(ReferenceFile.nreferences):
@@ -202,10 +261,12 @@ for tid in range(ReferenceFile.nreferences):
 RefLength=PosCount
 WindowSize=100
 WindowsN=int(RefLength/WindowSize)+1
-RDWindows=[0]*WindowsN
+RDWindows=[]
 
+SampleIndex=0
 for i in range(2,len(sys.argv)):
     SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
+    RDWindows.append([0]*WindowsN)
     for read in SamFile:
         read: pysam.AlignedSegment
         if read.is_paired:
@@ -213,13 +274,35 @@ for i in range(2,len(sys.argv)):
                 Pair=PairInfo(UnpairedReads.pop(read.query_name),read)
                 if isDiscordant(Pair):
                     DiscordantReads.append(Pair)
-                RDWindows[int((Pair.Start+Pair.End)/2)]+=1
+                RDWindows[SampleIndex][int((Pair.Start+Pair.End)/2/100)]+=1
             else:
                 UnpairedReads[read.query_name]=read
     SamFile.close()
+    SampleIndex+=1
+RDWindowsAverage=[0]*WindowsN
+RDWindowsSum=[0]*WindowsN
+SampleN=len(RDWindows)
+SampleSum=[0]*SampleN
+SampleAverage=[0]*SampleN
+for i in range(WindowsN):
+    for j in range(SampleN):
+        RDWindowsSum[i]+=RDWindows[j][i]
+        SampleSum[j]+=RDWindows[j][i]
+    RDWindowsAverage[i]=RDWindowsSum[i]/SampleN
+for j in range(SampleN):
+    SampleAverage[j]=SampleSum[j]/WindowsN
 DiscordantReads.sort(key=lambda r:r.Start)
 DRClusters=cluster(DiscordantReads)
+
+#Evidences=makeDRCEvidences()
+
+#analyzeRD
+#analyzeDR
+#combineEvidence
+
 for c in DRClusters:
     SV=callSV(ReferenceFile,c)
     if SV!="":
         print(SV)
+
+ReferenceFile.close()
