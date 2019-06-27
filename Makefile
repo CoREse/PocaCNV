@@ -9,6 +9,8 @@ PROJECT_HEADERS=
 EXAMPLE_OBJS=
 HTSLIB=htslib/libhts.a
 
+.PHONY: all test clean
+
 all: test
 
 $(DNASEQ):$(DNASEQ_OBJS)

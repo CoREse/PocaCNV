@@ -4,7 +4,7 @@ import time
 from globals import *
 
 class Evidence:
-    CombinePercentage=0.75
+    CombinePercentage=0.9
     def __init__(self):
         self.Data=[]
         self.Spread=(0,0)
@@ -18,9 +18,9 @@ class Evidence:
         for Datum in self.Data:
             if Datum[0]==0:
                 if self.Spread==None:
-                    self.Spread=(Datum[1].Start,Datum[1].End)
+                    self.Spread=(Datum[1][0],Datum[1][1])#self.Spread=(Datum[1].Start,Datum[1].End)
                 else:
-                    self.Spread=(min(self.Spread[0],Datum[1].Start),max(self.Spread[1],Datum[1].End))
+                    self.Spread=(min(self.Spread[0],Datum[1][0]),max(self.Spread[1],Datum[1][1]))
     def combineEvidence(self, other):#return: 0: not combine, 1: combine, -1: not overlap
         if self.Spread[0]<other.Spread[1] and self.Spread[0]>other.Spread[0]:
             Overlap=min(other.Spread[1]-self.Spread[0],self.Spread[1]-self.Spread[0])
@@ -31,9 +31,10 @@ class Evidence:
         else:
             Overlap=0
             return -1
-        MinLength=min(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
-        Overlap=Overlap/MinLength if MinLength!=0 else 0
-        if Overlap>=CombinePercentage:
+        #MinLength=min(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
+        MaxLength=max(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
+        Overlap=Overlap/MaxLength if MaxLength!=0 else 0
+        if Overlap>=Evidence.CombinePercentage:
             self.Data+=other.Data
             self.Spread=(min(self.Spread[0],other.Spread[0]),max(self.Spread[1],other.Spread[1]))
             return 1
@@ -122,6 +123,21 @@ class PairInfo:
         self.Start=self.LStart
         self.End=max(self.LEnd,self.REnd)
         self.InsertionSize=self.End-self.Start
+    def isDiscordant(pi):
+        if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*ISSD or pi.InsertionSize>MedianInsertionSize+3*ISSD:
+            return True
+        return False
+
+    def linked(Pair1, Pair2):
+        if Pair1.NMapped==Pair2.NMapped:
+            if Pair1.hasFlags(PairInfo.Crossed|PairInfo.Contained) or Pair2.hasFlags(PairInfo.Crossed|PairInfo.Contained):
+                return False
+            if abs(Pair1.Start-Pair2.Start)<3*ISSD and abs(Pair1.End-Pair2.End)<3*ISSD\
+                and (Pair1.NMapped!=2 or (Pair1.NMapped==2 and Pair1.LEnd<=Pair2.RStart and Pair2.LEnd<=Pair1.RStart)):
+                return True
+            return False
+        else:
+            return False 
 
 def isDiscordant(pi):
     if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*ISSD or pi.InsertionSize>MedianInsertionSize+3*ISSD:
@@ -197,35 +213,54 @@ def getScore(E):
     Score=0
     U=0
     N=0
-    for d in E:
+    for d in E.Data:
         if d[0]==0:
-            for c in d[1]:
-                for r in Cluster[2]:
-                    U+=r.InsertionSize
-                N+=len(c[2])
-    return 0
+            if d[1][2][0].NMapped!=2:
+                continue
+            for r in d[1][2]:
+                U+=r.InsertionSize
+            N+=len(d[1][2])
+    if N==0:
+        return 0
+    U=((float(U)/N)-MedianInsertionSize)/ISSD*float(N)**0.5
+    return U
 
-def callSV(ReferenceFile,Cluster):
+def getBreak(E):
+    Start=0xffffffff
+    End=0
+    BKL=0
+    BKR=0xffffffff
+    for d in E.Data:
+        if d[0]==0:
+            for r in d[1][2]:
+                BKL=max(BKL,r.LEnd)
+                BKR=min(BKR,r.RStart)
+        Start=min(Start,BKL)
+        End=max(End,BKR)
+    return (Start,End)
+
+def getSVType(E):
+    AI=0
+    N=0
+    for d in E.Data:
+        if d[0]==0:
+            for r in d[1][2]:
+                AI+=r.InsertionSize
+        N+=len(d[1][2])
+    AI/=N
+    if AI>MedianInsertionSize:
+        return "DEL"
+    else:
+        return "INS"
+
+def callSV(ReferenceFile,E):
     SV=""
-    U=0
-    if Cluster[2][0].NMapped!=2:
-        return ""
-    if len(Cluster[2])<0:
-        return ""
-    for r in Cluster[2]:
-        U+=r.InsertionSize
-    U=(float(U)/len(Cluster[2])-MedianInsertionSize)/ISSD*float(len(Cluster[2]))**0.5#U~N(0,1)
-    BKL=Cluster[0]
-    BKR=Cluster[1]
-    for r in Cluster[2]:
-        BKL=max(BKL,r.LEnd)
-        BKR=min(BKR,r.RStart)
-    if U>10:
-        SV+=ReferenceFile.references[getTidByCord(Cluster[0])]+":"+str(1+Cluster[0]-RefStartPos[getTidByCord(Cluster[0])])+"-"+ReferenceFile.references[getTidByCord(Cluster[1])]+":"+str(1+Cluster[1]-RefStartPos[getTidByCord(Cluster[1])])
-        if Cluster[2][0].InsertionSize<MedianInsertionSize:
-            SV+=", INS"
-        else:
-            SV+=", DEL"
+    SVType=getSVType(E)
+    Score=getScore(E)
+    BKL,BKR=getBreak(E)
+    if Score>10:
+        SV+=ReferenceFile.references[getTidByCord(E.Spread[0])]+":"+str(1+E.Spread[0]-RefStartPos[getTidByCord(E.Spread[0])])+"-"+ReferenceFile.references[getTidByCord(E.Spread[1])]+":"+str(1+E.Spread[1]-RefStartPos[getTidByCord(E.Spread[1])])
+        SV+=", "+SVType
         SV+=", Breakpoint:[%s,%s]"%(ReferenceFile.references[getTidByCord(BKL)]+":"+str(1+BKL-RefStartPos[getTidByCord(BKL)]),ReferenceFile.references[getTidByCord(BKR)]+":"+str(1+BKR-RefStartPos[getTidByCord(BKR)]))
     return SV
 
@@ -293,15 +328,16 @@ for j in range(SampleN):
     SampleAverage[j]=SampleSum[j]/WindowsN
 DiscordantReads.sort(key=lambda r:r.Start)
 DRClusters=cluster(DiscordantReads)
+print("Number of dr clusters:%d"%(len(DRClusters)),file=sys.stderr)
 
-#Evidences=makeDRCEvidences()
+Evidences=makeDRCEvidences(DRClusters)
 
 #analyzeRD
 #analyzeDR
 #combineEvidence
-
-for c in DRClusters:
-    SV=callSV(ReferenceFile,c)
+print("Number of evidences:%d"%(len(Evidences)),file=sys.stderr)
+for E in Evidences:
+    SV=callSV(ReferenceFile,E)
     if SV!="":
         print(SV)
 
