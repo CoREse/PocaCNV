@@ -87,7 +87,10 @@ class interval:
                 return True
             else:
                 return False
-
+    def is_included_by(self,other):
+        if self.start>=other.get_start() and self.end<=other.get_end():
+            return True
+        return False
 
 def parse_cnvnator(input_file, min_length=0, max_length=sys.maxsize):
     records = []
@@ -128,6 +131,8 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
             instotal+=1
         tag = False    
         for interval2 in callset:
+            if interval1.type!=interval2.type:
+                continue
             if interval1.is_overlap_by_percent_or_near(interval2, percent,near):
                 tag = True
         if tag == True:
@@ -141,7 +146,7 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
             elif interval1.type=="INS":
                 inscount+=1
     print('All=%s, Found=%s, Recalled=%s(percentage=%s)' % (len(goldstandard),str(len(callset)),count,percent))
-    print('Sensitivity: All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard))),\
+    print('Sensitivity: All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard))) if len(goldstandard)!=0 else "N/A",\
         gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
@@ -163,6 +168,8 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
             instotal+=1
         tag = False    
         for interval2 in goldstandard:
+            if interval1.type!=interval2.type:
+                continue
             if interval1.is_overlap_by_percent_or_near(interval2, percent,near):
                 tag = True
         if tag == True:
@@ -177,7 +184,82 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
                 inscount+=1
     print('All=%s, Found=%s, Correct=%s(percentage=%s)' % (len(goldstandard),str(len(callset)),count,percent))
     print('FDR(Right/All): All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' \
-        %(str(1-float(count) / float(len(callset))),1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
+        %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
+            1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
+                1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
+
+##consider caught if callset fully include goldstandard
+def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
+    count = 0
+    gaincount=0
+    losscount=0
+    inscount=0
+    gaintotal=0
+    losstotal=0
+    instotal=0
+    for interval1 in goldstandard:
+        if interval1.type=="GAIN":
+            gaintotal+=1
+        elif interval1.type=="LOSS":
+            losstotal+=1
+        elif interval1.type=="INS":
+            instotal+=1
+        tag = False    
+        for interval2 in callset:
+            if interval1.type!=interval2.type:
+                continue
+            if interval1.is_included_by(interval2):
+                tag = True
+        if tag == True:
+            if printmatch:
+                print(interval1)
+            count = count + 1
+            if interval1.type=="GAIN":
+                gaincount+=1
+            elif interval1.type=="LOSS":
+                losscount+=1
+            elif interval1.type=="INS":
+                inscount+=1
+    print('All=%s, Found=%s, Recalled=%s(by inclusion)' % (len(goldstandard),str(len(callset)),count))
+    print('Sensitivity: All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard)))if len(goldstandard)!=0 else "N/A",\
+        gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
+            losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
+                inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
+
+def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
+    count = 0
+    gaincount=0
+    losscount=0
+    inscount=0
+    gaintotal=0
+    losstotal=0
+    instotal=0
+    for interval1 in callset:
+        if interval1.type=="GAIN":
+            gaintotal+=1
+        elif interval1.type=="LOSS":
+            losstotal+=1
+        elif interval1.type=="INS":
+            instotal+=1
+        tag = False    
+        for interval2 in goldstandard:
+            if interval1.type!=interval2.type:
+                continue
+            if interval2.is_included_by(interval1):
+                tag = True
+        if tag == True:
+            if printmatch:
+                print(interval1)
+            count = count + 1
+            if interval1.type=="GAIN":
+                gaincount+=1
+            elif interval1.type=="LOSS":
+                losscount+=1
+            elif interval1.type=="INS":
+                inscount+=1
+    print('All=%s, Found=%s, Correct=%s(by inclusion)' % (len(goldstandard),str(len(callset)),count))
+    print('FDR(Right/All): All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' \
+        %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
 
@@ -212,13 +294,16 @@ def parse_my(filename):
     myout=open(filename,"r")
     records=[]
     for line in myout:
-        line=line.replace(" ","")
-        sl=line.split(",")
-        blockstart=int(sl[0].split("-")[0].split(":")[1])
-        blockend=int(sl[0].split("-")[1].split(":")[1])
-        breakstart=int(sl[-2].split(":")[-1])
-        breakend=int(sl[-1].split(":")[1].split("]")[0])
-        temp=interval(sl[0].split(":")[0],breakstart,breakend,"LOSS" if sl[1]=="DEL" else "INS")
-        records.append(temp)
+        try:
+            line=line.replace(" ","")
+            sl=line.split(",")
+            blockstart=int(sl[0].split("-")[0].split(":")[1])
+            blockend=int(sl[0].split("-")[1].split(":")[1])
+            breakstart=int(sl[-2].split(":")[-1])
+            breakend=int(sl[-1].split(":")[1].split("]")[0])
+            temp=interval(sl[0].split(":")[0],breakstart,breakend,"LOSS" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "GAIN"))
+            records.append(temp)
+        except:
+            continue
     myout.close()
     return records

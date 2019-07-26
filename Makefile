@@ -23,7 +23,18 @@ otest: $(PROJECT_OBJS) $(HTSLIB)
 	$(LINK.cpp) -o $@ $^ $(LDFLAGS)
 
 test:
+	python3 test.py
+oldtest:
 	time python3 jc.py ~/data/Homo_sapiens_assembly38.fasta.gz ~/data/HG0051*chr22.cram > test/512-4_chr22_testcall.txt
+	python3 benchmark.py
+
+fasttest:
+	time python3 jc.py ~/data/hg38.fa ~/data/51*_ch1_2M.bam > test/fasttest.txt
+
+qtest:
+	time python3 jc.py ~/data/hg38.fa ~/data/512_ch1_2M.bam > test/qtest.txt
+
+bench:
 	python3 benchmark.py
 
 $(HTSLIB): htslib/*
