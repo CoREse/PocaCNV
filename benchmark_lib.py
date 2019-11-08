@@ -28,6 +28,28 @@ class interval:
     def get_length(self):
         return self.end - self.start + 1
     
+    def is_overlap_pure(self, other, percent=0):
+        if self.start > other.get_end() or self.end < other.get_start():
+            return False
+        if self.start >= other.get_start(): 
+            if self.end <= other.get_end():
+                overlap = self.get_length()
+            else:
+                overlap = other.get_end() - self.start + 1
+            if float(overlap) / float(self.get_length()) >= percent and float(overlap) / float(other.get_length()) >= percent:
+                return True
+            else:
+                return False
+        if self.start < other.get_start():
+            if other.get_end() <= self.end:
+                overlap = other.get_length()
+            else:
+                overlap = self.end - other.get_start() + 1
+            if float(overlap) / float(self.get_length()) >= percent and float(overlap) / float(other.get_length()) >= percent:               
+                return True
+            else:
+                return False
+    
     def is_overlap(self, other):
         if self.chrom != other.get_chrom() or self.type != other.get_type():
             return False
@@ -103,11 +125,11 @@ def parse_cnvnator(input_file, min_length=0, max_length=sys.maxsize):
         start = int(region[0])
         end = int(region[1])
         if type == 'deletion':
-            tmp = interval(chrom, start, end, 'LOSS')
+            tmp = interval(chrom, start, end, 'DEL')
             if tmp.get_length() >= min_length and tmp.get_length() < max_length:
                     records.append(tmp)
         if type == 'duplication':
-            tmp = interval(chrom, start, end, 'GAIN')
+            tmp = interval(chrom, start, end, 'DUP')
             if tmp.get_length() >= min_length and tmp.get_length() < max_length:
                     records.append(tmp)           
     f.close()
@@ -123,9 +145,9 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
     losstotal=0
     instotal=0
     for interval1 in goldstandard:
-        if interval1.type=="GAIN":
+        if interval1.type=="DUP":
             gaintotal+=1
-        elif interval1.type=="LOSS":
+        elif interval1.type=="DEL":
             losstotal+=1
         elif interval1.type=="INS":
             instotal+=1
@@ -139,14 +161,14 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
             if printmatch:
                 print(interval1)
             count = count + 1
-            if interval1.type=="GAIN":
+            if interval1.type=="DUP":
                 gaincount+=1
-            elif interval1.type=="LOSS":
+            elif interval1.type=="DEL":
                 losscount+=1
             elif interval1.type=="INS":
                 inscount+=1
     print('All=%s, Found=%s, Recalled=%s(percentage=%s)' % (len(goldstandard),str(len(callset)),count,percent))
-    print('Sensitivity: All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard))) if len(goldstandard)!=0 else "N/A",\
+    print('Sensitivity: All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard))) if len(goldstandard)!=0 else "N/A",\
         gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
@@ -160,9 +182,9 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
     losstotal=0
     instotal=0
     for interval1 in callset:
-        if interval1.type=="GAIN":
+        if interval1.type=="DUP":
             gaintotal+=1
-        elif interval1.type=="LOSS":
+        elif interval1.type=="DEL":
             losstotal+=1
         elif interval1.type=="INS":
             instotal+=1
@@ -176,14 +198,14 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
             if printmatch:
                 print(interval1)
             count = count + 1
-            if interval1.type=="GAIN":
+            if interval1.type=="DUP":
                 gaincount+=1
-            elif interval1.type=="LOSS":
+            elif interval1.type=="DEL":
                 losscount+=1
             elif interval1.type=="INS":
                 inscount+=1
     print('All=%s, Found=%s, Correct=%s(percentage=%s)' % (len(goldstandard),str(len(callset)),count,percent))
-    print('FDR(Right/All): All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' \
+    print('FDR(Right/All): All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' \
         %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
@@ -198,9 +220,9 @@ def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
     losstotal=0
     instotal=0
     for interval1 in goldstandard:
-        if interval1.type=="GAIN":
+        if interval1.type=="DUP":
             gaintotal+=1
-        elif interval1.type=="LOSS":
+        elif interval1.type=="DEL":
             losstotal+=1
         elif interval1.type=="INS":
             instotal+=1
@@ -214,14 +236,14 @@ def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
             if printmatch:
                 print(interval1)
             count = count + 1
-            if interval1.type=="GAIN":
+            if interval1.type=="DUP":
                 gaincount+=1
-            elif interval1.type=="LOSS":
+            elif interval1.type=="DEL":
                 losscount+=1
             elif interval1.type=="INS":
                 inscount+=1
     print('All=%s, Found=%s, Recalled=%s(by inclusion)' % (len(goldstandard),str(len(callset)),count))
-    print('Sensitivity: All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard)))if len(goldstandard)!=0 else "N/A",\
+    print('Sensitivity: All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard)))if len(goldstandard)!=0 else "N/A",\
         gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
@@ -235,9 +257,9 @@ def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
     losstotal=0
     instotal=0
     for interval1 in callset:
-        if interval1.type=="GAIN":
+        if interval1.type=="DUP":
             gaintotal+=1
-        elif interval1.type=="LOSS":
+        elif interval1.type=="DEL":
             losstotal+=1
         elif interval1.type=="INS":
             instotal+=1
@@ -251,37 +273,58 @@ def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
             if printmatch:
                 print(interval1)
             count = count + 1
-            if interval1.type=="GAIN":
+            if interval1.type=="DUP":
                 gaincount+=1
-            elif interval1.type=="LOSS":
+            elif interval1.type=="DEL":
                 losscount+=1
             elif interval1.type=="INS":
                 inscount+=1
     print('All=%s, Found=%s, Correct=%s(by inclusion)' % (len(goldstandard),str(len(callset)),count))
-    print('FDR(Right/All): All:%s, Gain:%s(%s/%s), Loss:%s(%s/%s), Ins:%s(%s/%s)' \
+    print('FDR(Right/All): All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' \
         %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
 
-def parse_vcf(filename,contigs=None):
+def parse_vcf(filename,contigs=None,samples=None):
     vcf=pysam.VariantFile(filename,"r")
     result=[]
     included={}
+    includedSamples={}
     if contigs!=None:
         for c in contigs:
             included[c]=True
+    if samples!=None:
+        for s in samples:
+            includedSamples[s.upper()]=True
     for record in vcf.fetch():
+        End=record.pos
         try:
+            End=record.pos+abs(record.info["SVLEN"])
+        except:
+            try:
+                End=record.info["END"]
+            except:
+                pass
+        try:
+            chrom=record.chrom
+            if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
+                    chrom="chr"+record.chrom
             if contigs!=None:
-                if not included[record.chrom]:
+                if not chrom in included.keys():
                     continue
+            if samples!=None:
+                try:
+                    if not record.info["SAMPLE"].upper() in includedSamples.keys():
+                        continue
+                except:
+                    pass
             temp=None
             if record.info["SVTYPE"]=="INS":
-                temp=interval(record.chrom,record.pos,record.stop+1,"INS")
+                temp=interval(chrom,record.pos,record.stop+1,"INS")
             elif record.info["SVTYPE"]=="DEL":
-                temp=interval(record.chrom,record.pos,record.pos+abs(record.info["SVLEN"]),"LOSS")
+                temp=interval(chrom,record.pos,End,"DEL")
             elif record.info["SVTYPE"]=="DUP":
-                temp=interval(record.chrom,record.pos,record.pos+abs(record.info["SVLEN"]),"GAIN")
+                temp=interval(chrom,record.pos,End,"DUP")
             else:
                 continue
             result.append(temp)
@@ -290,7 +333,9 @@ def parse_vcf(filename,contigs=None):
     vcf.close()
     return result
 
-def parse_my(filename):
+def parse_my(filename,contigs=None, samples=None):
+    if filename[-4:]==".vcf" or filename[-4:]==".bcf":
+        return parse_vcf(filename,contigs,samples)
     myout=open(filename,"r")
     records=[]
     for line in myout:
@@ -301,7 +346,7 @@ def parse_my(filename):
             blockend=int(sl[0].split("-")[1].split(":")[1])
             breakstart=int(sl[-2].split(":")[-1])
             breakend=int(sl[-1].split(":")[1].split("]")[0])
-            temp=interval(sl[0].split(":")[0],breakstart,breakend,"LOSS" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "GAIN"))
+            temp=interval(sl[0].split(":")[0],breakstart,breakend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
             records.append(temp)
         except:
             continue

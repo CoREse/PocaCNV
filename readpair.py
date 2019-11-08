@@ -13,13 +13,14 @@ class PairInfo:
     Contained=0x40#left read contains right one
     def hasFlags(self,Flags):
         return self.Flags & Flags
-    def __init__(self, Read1:pysam.AlignedSegment, Read2:pysam.AlignedSegment):
+    def __init__(self, Read1:pysam.AlignedSegment, Read2:pysam.AlignedSegment,SampleIndex):
         self.Flags=0#low to high:LMapped,LReversed,RMapped,RReversed,TransChrs,Crossed
         self.LStart=0
         self.LEnd=0
         self.RStart=0
         self.REnd=0
         self.NMapped=0
+        self.SampleIndex=SampleIndex
         if Read1.is_unmapped:
             if Read2.is_unmapped:
                 pass
@@ -82,13 +83,17 @@ class PairInfo:
                 if self.RStart<self.LEnd:
                     self.Flags|=PairInfo.Crossed
                 self.NMapped=2
+                self.Flags|=PairInfo.LMapped|PairInfo.RMapped
         self.Start=self.LStart
         self.End=max(self.LEnd,self.REnd)
         self.InsertionSize=self.End-self.Start
     
-    def isDiscordant(pi):
-        if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*ISSD or pi.InsertionSize>MedianInsertionSize+3*ISSD:
-            return True
+    def isDiscordant(pi,conditionF=None):
+        if conditionF==None:
+            if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*ISSD or pi.InsertionSize>MedianInsertionSize+3*ISSD:
+                return True
+        else:
+            return conditionF(pi)
         return False
 
     def linked(Pair1, Pair2):

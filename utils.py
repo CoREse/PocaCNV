@@ -11,6 +11,17 @@ def calcOverlap(B1,E1,B2,E2):
         Overlap=-1
     return Overlap
 
+def inclusion(In1,In2):#return 0: not overlapped, 1: overlapped, 2: In1 include In2, 3: In2 inlcude In1, 4: identical
+    if In1==In2:
+        return 4
+    elif In1[0]>=In2[0] and In1[1]<=In2[1]:
+        return 3
+    elif In1[0]<=In2[0] and In1[1]>=In2[1]:
+        return 2
+    elif In1[0]>=In2[0] and In1[0]<=In2[1] or In1[1]>=In2[0] and In1[1]<=In2[1]:
+        return 1
+    return 0
+
 def getTidByCord(Cordinate):
     i=1
     while i<len(RefStartPos):
