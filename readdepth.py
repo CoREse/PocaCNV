@@ -213,13 +213,14 @@ def writeRDData(RDWindows,ReferenceFile,SampleNames):
     ReferenceFile:pysam.FastaFile
     for i in range(len(SampleNames)):
         rdfile=open("data/rd%s.txt"%(SampleNames[i]),"w")
+        print("#Length:%d"%(len(RDWindows[0])),end="",file=rdfile)
         Chri=0
         Chr=0
         for j in range(len(RDWindows[i])):
             if getTidByCord(j*100)!=Chr:
                 Chr=getTidByCord(j*100)
                 Chri=0
-            print("%s %s %s"%(ReferenceFile.references[Chr], Chri, RDWindows[i][j]),file=rdfile)
+            print("\n%s %s %s"%(ReferenceFile.references[Chr], Chri, RDWindows[i][j]),end="",file=rdfile)
             Chri+=1
         rdfile.close()
     return
