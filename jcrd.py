@@ -33,18 +33,21 @@ RCount=0
 UnmappedCount=0
 SampleNames=[]
 for i in range(2,len(sys.argv)):
-    SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
-    SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
-    RDWindows.append([0]*WindowsN)
-    for read in SamFile:
-        ReadCount+=1
-        read: pysam.AlignedSegment
-        if read.is_unmapped:
-            UnmappedCount+=1
-        else:
-            RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2)+RefStartPos[read.tid])/RDWindowSize)]+=1
-            OccurredContigs[read.reference_id]=True
-    SamFile.close()
+    if sys.argv[i].split(".")[-1]=="txt":
+        readRDData(RDWindows,SampleNames,sys.argv[i])
+    else:
+        SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
+        SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
+        RDWindows.append([0]*WindowsN)
+        for read in SamFile:
+            ReadCount+=1
+            read: pysam.AlignedSegment
+            if read.is_unmapped:
+                UnmappedCount+=1
+            else:
+                RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2)+RefStartPos[read.tid])/RDWindowSize)]+=1
+                OccurredContigs[read.reference_id]=True
+        SamFile.close()
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)

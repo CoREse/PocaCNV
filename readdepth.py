@@ -224,3 +224,33 @@ def writeRDData(RDWindows,ReferenceFile,SampleNames):
             Chri+=1
         rdfile.close()
     return
+
+def readRDData(RDWindows, SampleNames, FileName):
+    SampleName=FileName.split("\\")[-1].split("/")[-1][2:-4]
+    SampleNames.append(SampleName)
+    DataFile=open(FileName,"r")
+    Length=0
+    for line in DataFile:
+        if line[0]=='#':
+            if line.split(":")[0]=="#Length":
+                Length=int(line.split(":")[1])
+        break
+    DataFile.seek(0)
+    if Length==0:
+        RDWindows.append([])
+        for line in DataFile:
+            if line[0]=='#':
+                continue
+            RDWindows[-1].append(int(line.split()[-1]))
+    else:
+        RDWindows.append([0]*Length)
+        i=0
+        for line in DataFile:
+            if line[0]=='#':
+                continue
+            RDWindows[-1][i]=int(line.split()[-1])
+            i+=1
+            if i>=Length:
+                break
+    DataFile.close()
+    return
