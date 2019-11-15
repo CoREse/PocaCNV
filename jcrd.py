@@ -35,6 +35,7 @@ SampleNames=[]
 for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="txt":
         readRDData(RDWindows,SampleNames,sys.argv[i])
+        OccurredWindowsN=len(RDWindows[0])
     else:
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
