@@ -142,7 +142,7 @@ def partition(RDRs):
 
 def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
     RDWindowAverages=[0]*WindowsN
-    #RDWindowSums=[0]*WindowsN
+    RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=RDWindows[-1]
