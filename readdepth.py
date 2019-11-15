@@ -146,7 +146,7 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=RDWindows[-1]
-    if True or SampleN==1:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
+    if SampleN<10:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
             for j in range(SampleN):
                 #RDWindowSums[i]+=RDWindows[j][i]
@@ -180,7 +180,6 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
-    
     rdtestfile=open("data/rdtest.txt","w")
     for i in range(OccurredWindowsN):
         print("22 %d %f"%(i,MixedRDRs[0][int(RefStartPos[RefInd["chr22"]]/100)+i]),file=rdtestfile)

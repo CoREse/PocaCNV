@@ -1,6 +1,7 @@
 from matplotlib import pyplot
+import sys
 
-ifile = open("data/rdtest.txt","r")
+ifile = open(sys.argv[1],"r")
 data=[]
 for line in ifile:
     if len(line)==0 or line[0]=="#":

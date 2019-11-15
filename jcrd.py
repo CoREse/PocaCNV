@@ -7,7 +7,7 @@ from readpair import *
 from readdepth import *
 from filters import *
 
-WriteRDData=True
+WriteRDData=False
 
 print("Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])
