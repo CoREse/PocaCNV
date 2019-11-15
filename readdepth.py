@@ -169,9 +169,9 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
     else:
         for i in range(WindowsN):
             for j in range(SampleN):
-                #RDWindowSums[i]+=RDWindows[j][i]
+                RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
-            #RDWindowAverages[i]=RDWindowSums[i]/SampleN
+            RDWindowAverages[i]=RDWindowSums[i]/SampleN
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/OccurredWindowsN
         MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate

@@ -53,6 +53,7 @@ for i in range(2,len(sys.argv)):
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
 
+'''
 if len(RDWindows)>1:
     RDWindows.append([0]*WindowsN)#last sample is the s/"sum sample"/"average sample", because sum sample will significantly influence the WR variable
     SumI=len(RDWindows)-1
@@ -60,6 +61,7 @@ if len(RDWindows)>1:
         for j in range(SumI):
             RDWindows[SumI][i]+=RDWindows[j][i]
         RDWindows[SumI][i]/=SumI
+'''
 
 for c in OccurredContigs:
     OccurredWindowsN+=int(ReferenceFile.lengths[c]/RDWindowSize)+1
