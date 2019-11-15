@@ -182,7 +182,7 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
     rdtestfile=open("data/rdtest.txt","w")
     for i in range(OccurredWindowsN):
-        print("%s %d %f"%(i,MixedRDRs[0][i]),file=rdtestfile)
+        print("%d %f"%(i,MixedRDRs[0][i]),file=rdtestfile)
     rdtestfile.close()
     exit(0)
     ''' SIGMA(MixedRDRs)=NM, so, ERD=NM/NM=1

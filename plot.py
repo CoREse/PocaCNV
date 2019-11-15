@@ -6,6 +6,6 @@ data=[]
 for line in ifile:
     if len(line)==0 or line[0]=="#":
         continue
-    data.append(float(line.split()[2]))
+    data.append(float(line.split()[-1]))
 pyplot.plot(data)
 pyplot.show()
