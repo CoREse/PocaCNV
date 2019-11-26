@@ -6,7 +6,7 @@ import math
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
 
-def getScore(C):
+def getScore(C,TheContig):
     Score=0
     RDScore=0
     U=0
@@ -24,9 +24,9 @@ def getScore(C):
     #read-depth break interval score
     MeanRD=0
     IntervalWN=int(C.BreakRight/RDWindowSize)+1-int(C.BreakLeft/RDWindowSize)
-    SampleN=len(globals.MixedRDRs)
-    for i in range(int(C.BreakLeft/RDWindowSize),int(C.BreakRight/RDWindowSize)+1):
-        MeanRD+=globals.MixedRDRs[SampleN-1][i]
+    SampleN=len(TheContig.MixedRDRs)
+    for i in range(int(C.BreakLeft/RDWindowSize),int(C.BreakRight/RDWindowSize)):
+        MeanRD+=TheContig.MixedRDRs[SampleN-1][i]
     MeanRD/=IntervalWN
     if MeanRD>100:#reduce calculation
         MeanRD=100
@@ -72,12 +72,12 @@ def prefilters(C):
         return False
     return True
 
-def callSV(ReferenceFile,C):
+def callSV(ReferenceFile,C,TheContig):
     SV=""
     if prefilters(C)!=True:
         return SV
     SVType=getSVType(C)
-    Score=getScore(C)
+    Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
     if Score>215:
         SV+=ReferenceFile.references[getTidByCord(C.Begin)]+":"+str(1+C.Begin-RefStartPos[getTidByCord(C.Begin)])+"-"+ReferenceFile.references[getTidByCord(C.End)]+":"+str(1+C.End-RefStartPos[getTidByCord(C.End)])

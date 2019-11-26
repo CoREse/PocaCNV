@@ -2,6 +2,7 @@ import globals
 from globals import *
 from utils import *
 import sys
+from contig import *
 
 class RDInterval:
     def __init__(self,WBegin,WEnd,ARD):
@@ -140,7 +141,7 @@ def partition(RDRs):
     print(len(Separator), diverify(RDRs,Separator,0),file=sys.stderr) 
     exit(0)
 
-def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
+def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     RDWindowAverages=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)
@@ -153,13 +154,15 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
                 SampleSums[j]+=RDWindows[j][i]
             #RDWindowAverages[i]=RDWindowSums[i]/SampleN
         for j in range(SampleN):
-            SampleAverages[j]=SampleSums[j]/OccurredWindowsN
+            SampleAverages[j]=SampleSums[j]/WindowsN
         MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate
+        """
         ZCount=0
         for i in range(OccurredWindowsN):
             if RDWindows[0][int(RefStartPos[RefInd["chr22"]]/100)+i]==0:
                 ZCount+=1
         print(OccurredWindowsN, ZCount, SampleSums[0],SampleAverages[0])
+        """
         for i in range(SampleN):
             for j in range(WindowsN):
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
@@ -173,18 +176,20 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
                 SampleSums[j]+=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
         for j in range(SampleN):
-            SampleAverages[j]=SampleSums[j]/OccurredWindowsN
+            SampleAverages[j]=SampleSums[j]/WindowsN
         MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate
         for i in range(SampleN):
             for j in range(WindowsN):
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
-    rdtestfile=open("data/rdtest.txt","w")
-    for i in range(OccurredWindowsN):
+    """
+    rdtestfile=open("data/rdtest.txt","a")
+    for i in range(WindowsN):
         print("%d %f"%(i,MixedRDRs[0][i]),file=rdtestfile)
     rdtestfile.close()
     exit(0)
+    """
     ''' SIGMA(MixedRDRs)=NM, so, ERD=NM/NM=1
     ERD=0
     for i in range(WindowsN):
@@ -199,6 +204,7 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
     '''
     globals.ERD=1.0#ERD
     globals.MixedRDRs=MixedRDRs
+    TheContig.MixedRDRs=MixedRDRs
     if NormalizationOnly:
         return MixedRDRs
         
@@ -208,23 +214,21 @@ def analyzeRD(RDWindows,WindowsN,OccurredWindowsN,NormalizationOnly=False):
     return RDICandidates
 
 import pysam
-def writeRDData(RDWindows,ReferenceFile,SampleNames):
+def writeRDData(mygenome,ReferenceFile,SampleNames):
     ReferenceFile:pysam.FastaFile
     for i in range(len(SampleNames)):
-        rdfile=open("data/rd%s.txt"%(SampleNames[i]),"w")
-        print("#Length:%d"%(len(RDWindows[0])),end="",file=rdfile)
-        Chri=0
-        Chr=0
-        for j in range(len(RDWindows[i])):
-            if getTidByCord(j*100)!=Chr:
-                Chr=getTidByCord(j*100)
-                Chri=0
-            print("\n%s %s %s"%(ReferenceFile.references[Chr], Chri, RDWindows[i][j]),end="",file=rdfile)
-            Chri+=1
+        rdfile=open("data/rd%s.rdf"%(SampleNames[i]),"w")
+        first=True
+        for c in mygenome.Contigs:
+            for j in range(len(c.RDWindows[i])):
+                if not first:
+                    print("\n",end="",file=rdfile)
+                first=False
+                print("%s %s %s"%(c.Name, j, c.RDWindows[i][j]),end="",file=rdfile)
         rdfile.close()
     return
 
-def readRDData(RDWindows, SampleNames, FileName):
+def readRDData(mygenome, SampleNames, FileName):
     SampleName=FileName.split("\\")[-1].split("/")[-1][2:-4]
     SampleNames.append(SampleName)
     DataFile=open(FileName,"r")
@@ -235,21 +239,15 @@ def readRDData(RDWindows, SampleNames, FileName):
                 Length=int(line.split(":")[1])
         break
     DataFile.seek(0)
-    if Length==0:
-        RDWindows.append([])
-        for line in DataFile:
-            if line[0]=='#':
-                continue
-            RDWindows[-1].append(int(line.split()[-1]))
-    else:
-        RDWindows.append([0]*Length)
-        i=0
-        for line in DataFile:
-            if line[0]=='#':
-                continue
-            RDWindows[-1][i]=int(line.split()[-1])
-            i+=1
-            if i>=Length:
-                break
+    ContigName=None
+    mygenome.addSample(SampleName)
+    i=0
+    for line in DataFile:
+        if line[0]=='#':
+            continue
+        sl=line.split()
+        ContigName=sl[0]
+        ConI=int(sl[1])
+        mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
     DataFile.close()
     return
