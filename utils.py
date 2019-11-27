@@ -30,6 +30,7 @@ def getTidByCord(Cordinate):
         i+=1
     return i-1
 
+#Candidate can have evidences from different sapmles, evidence will only be one sample's evidence
 class Candidate:
     CombinePercentage=0.9
     def __init__(self,Es=[]):
@@ -115,11 +116,13 @@ class Evidence:
                     self.SupportedSVType=1
                 elif ClassOfD0==4:
                     self.SupportedSVType=0
+                self.Sample=self.Data[0].SampleIndex
         elif self.Type==1:
             self.SupportedSVType=self.Data.SupportedSVType
+            self.Sample=self.Data.Sample
 
     #do not use this
-    def combineEvidence(self, other):#return: 0: not combine, 1: combine, -1: not overlap
+    def combineEvidence(self, other):#DO NOT USE THIS! return: 0: not combine, 1: combine, -1: not overlap
         if self.Spread[0]<other.Spread[1] and self.Spread[0]>other.Spread[0]:
             Overlap=min(other.Spread[1]-self.Spread[0],self.Spread[1]-self.Spread[0])
         elif self.Spread[1]>other.Spread[0] and self.Spread[1]<other.Spread[0]:

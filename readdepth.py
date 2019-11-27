@@ -3,14 +3,16 @@ from globals import *
 from utils import *
 import sys
 from contig import *
+import statistics
 
 class RDInterval:
-    def __init__(self,WBegin,WEnd,ARD):
+    def __init__(self,Sample,WBegin,WEnd,ARD):
         self.WBegin=WBegin
         self.WEnd=WEnd
         self.AverageRD=ARD
         self.Begin=WBegin*RDWindowSize
         self.End=WEnd*RDWindowSize
+        self.Sample=Sample
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
         if self.AverageRD<0.1:
             self.CN=0
@@ -50,7 +52,7 @@ def makeRDIntervals(MixedRDRs):
         for j in range(1,len(MixedRDRs[i])):
             if sigDiff(MixedRDRs[i],j,CurrentRunRatio):
                 if CurrentRunRatio!=1:
-                    LastInterval=RDInterval(CurrentRunStart,j-1,CurrentRunRatio)
+                    LastInterval=RDInterval(i,CurrentRunStart,j-1,CurrentRunRatio)
                     if LastInterval.CN!=2:
                         EvidenceIntervals.append(LastInterval)
                 CurrentRunRatio=(MixedRDRs[i][j]+MixedRDRs[i][j-1])/2
@@ -147,7 +149,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=RDWindows[-1]
-    if SampleN<10:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
+    if SampleN<2:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
             for j in range(SampleN):
                 #RDWindowSums[i]+=RDWindows[j][i]
@@ -175,14 +177,35 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
+        SampleSumAverage=0
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
-        MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate
+            SampleSumAverage+=SampleSums[j]
+        SampleSumAverage/=SampleN
+        SampleSequenceDepthRatio=[0]*SampleN
+        #SampleMedians=[0]*SampleN
+        #print(SampleSumAverage, SampleSums, SampleMedians, TheContig.Name)
+        for j in range(SampleN):
+            SampleSequenceDepthRatio[j]=SampleSums[j]/SampleSumAverage if SampleSumAverage!=0 else 1
+            #SampleMedians[j]=statistics.median(RDWindows[j])
+
+        MixedRDRs=[]
+        for i in range(SampleN):
+            MixedRDRs.append([0]*WindowsN)#Mixed Read depth rate
         for i in range(SampleN):
             for j in range(WindowsN):
-                SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
+                MixedRDRs[i][j]=WR/SampleSequenceDepthRatio[i]
+                '''
+                SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
+                '''
+        MRMedians=[0]*SampleN
+        for j in range(SampleN):
+            MRMedians[j]=statistics.median(MixedRDRs[j])
+        for i in range(SampleN):
+            for j in range(WindowsN):
+                MixedRDRs[i][j]=((MixedRDRs[i][j]/MRMedians[i])*2.0) if MRMedians[i]!=0 else 0#standardization to make median 2.0
     """
     rdtestfile=open("data/rdtest.txt","a")
     for i in range(WindowsN):
@@ -228,6 +251,20 @@ def writeRDData(mygenome,ReferenceFile,SampleNames):
         rdfile.close()
     return
 
+def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
+    ReferenceFile:pysam.FastaFile
+    for i in range(len(SampleNames)):
+        rdfile=open("data/mrd%s.mrd"%(SampleNames[i]),"w")
+        first=True
+        for c in mygenome.Contigs:
+            for j in range(len(c.MixedRDRs[i])):
+                if not first:
+                    print("\n",end="",file=rdfile)
+                first=False
+                print("%s %s %s"%(c.Name, j, c.MixedRDRs[i][j]),end="",file=rdfile)
+        rdfile.close()
+    return
+
 def readRDData(mygenome, SampleNames, FileName):
     SampleName=FileName.split("\\")[-1].split("/")[-1][2:-4]
     SampleNames.append(SampleName)
@@ -242,12 +279,23 @@ def readRDData(mygenome, SampleNames, FileName):
     ContigName=None
     mygenome.addSample(SampleName)
     i=0
+    exicontigs=set()
+    notcontigs=set()
     for line in DataFile:
         if line[0]=='#':
             continue
         sl=line.split()
         ContigName=sl[0]
         ConI=int(sl[1])
-        mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
+        if ContigName in notcontigs:
+            continue
+        elif ContigName in exicontigs:
+            mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
+        elif mygenome.hasContig(ContigName):
+            exicontigs.add(ContigName)
+            mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
+        else:
+            notcontigs.add(ContigName)
+            continue
     DataFile.close()
     return

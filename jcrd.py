@@ -8,7 +8,8 @@ from readdepth import *
 from filters import *
 from contig import *
 
-WriteRDData=True
+WriteRDData=False
+Contigs={}#if not vacant, contain only those contigs
 
 print("Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])
@@ -18,7 +19,11 @@ for tid in range(ReferenceFile.nreferences):
     RefInd[ReferenceFile.references[tid]]=tid
     RefStartPos.append(PosCount)
     PosCount+=ReferenceFile.lengths[tid]
+    if len(Contigs)!=0:
+        if ReferenceFile.references[tid] not in Contigs:
+            continue
     c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+1)
+    mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
 
@@ -35,8 +40,6 @@ RCount=0
 UnmappedCount=0
 SampleNames=[]
 
-Contigs=[]
-
 for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="rdf":
         readRDData(mygenome,SampleNames,sys.argv[i])
@@ -51,7 +54,13 @@ for i in range(2,len(sys.argv)):
             if read.is_unmapped:
                 UnmappedCount+=1
             else:
-                mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
+                if len(Contigs)!=0:
+                    CID=mygenome.getContigID(read.tid)
+                    if CID==-1:
+                        continue
+                    mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
+                else:
+                    mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
     SampleIndex+=1
@@ -81,6 +90,13 @@ if WriteRDData:
     exit(0)
 
 print("Samples read, calculating RD data...", file=sys.stderr)
+
+for c in mygenome:
+    analyzeRD(c.RDWindows,c.Length,c, True)
+
+writeMixedRDData(mygenome,ReferenceFile,SampleNames)
+exit(0)
+
 RDICandidates=[]
 for c in mygenome:
     RDICandidates.append(analyzeRD(c.RDWindows,c.Length,c))
