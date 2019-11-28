@@ -1,3 +1,5 @@
+from array import array
+
 class Contig:
     def __init__(self,name,length):
         self.Name=name
@@ -6,7 +8,7 @@ class Contig:
         self.SampleNames=[]
 
     def addSample(self,name=""):
-        self.RDWindows.append([0]*self.Length)
+        self.RDWindows.append(array("I",[0]*self.Length))
         self.SampleNames.append(name)
     """
     def __getitem__(self,i):

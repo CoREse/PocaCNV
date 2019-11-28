@@ -7,6 +7,7 @@ from readpair import *
 from readdepth import *
 from filters import *
 from contig import *
+from array import array
 
 import os
 import psutil

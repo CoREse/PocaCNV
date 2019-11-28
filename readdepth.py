@@ -4,6 +4,7 @@ from utils import *
 import sys
 from contig import *
 import statistics
+from array import array
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):
@@ -158,7 +159,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         MixedRDRs=[]
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
-            MixedRDRs.append([0]*WindowsN)
+            MixedRDRs.append(array("f",[0]*WindowsN))
         #MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate, THIS is AWFUL! this will make SampleN copy of array objects, sharing the same memory space!
         """
         ZCount=0
@@ -193,7 +194,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
 
         MixedRDRs=[]
         for i in range(SampleN):
-            MixedRDRs.append([0]*WindowsN)#Mixed Read depth rate
+            MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
         for i in range(SampleN):
             for j in range(WindowsN):
                 WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
