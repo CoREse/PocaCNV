@@ -149,7 +149,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
-    SampleAverages=RDWindows[-1]
+    SampleAverages=[0]*SampleN
     if SampleN<2:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
             for j in range(SampleN):
@@ -248,11 +248,12 @@ def writeRDData(mygenome,ReferenceFile,SampleNames):
         rdfile=open("data/rd%s.rdf"%(SampleNames[i]),"w")
         first=True
         for c in mygenome.Contigs:
+            if not first:
+                print("\n",end="",file=rdfile)
+            first=False
+            print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
             for j in range(len(c.RDWindows[i])):
-                if not first:
-                    print("\n",end="",file=rdfile)
-                first=False
-                print("%s %s %s"%(c.Name, j, c.RDWindows[i][j]),end="",file=rdfile)
+                print("\n%s"%(c.RDWindows[i][j]),end="",file=rdfile)
         rdfile.close()
     return
 
@@ -262,11 +263,12 @@ def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
         rdfile=open("data/mrd%s.mrd"%(SampleNames[i]),"w")
         first=True
         for c in mygenome.Contigs:
+            if not first:
+                print("\n",end="",file=rdfile)
+            first=False
+            print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
             for j in range(len(c.MixedRDRs[i])):
-                if not first:
-                    print("\n",end="",file=rdfile)
-                first=False
-                print("%s %s %.5f"%(c.Name, j, c.MixedRDRs[i][j]),end="",file=rdfile)
+                print("\n%.8s"%(c.MixedRDRs[i][j]),end="",file=rdfile)
         rdfile.close()
     return
 
@@ -276,24 +278,24 @@ def readRDData(mygenome, SampleNames, FileName):
     DataFile=open(FileName,"r")
     ContigName=None
     mygenome.addSample(SampleName)
-    i=0
-    exicontigs=set()
-    notcontigs=set()
+    Skip=False
+    Windows=None
+    ConI=0
     for line in DataFile:
         if line[0]=='#':
+            sl=line[1:].split()
+            ContigName=sl[0]
+            if not mygenome.hasContig(ContigName):
+                Skip=True
+                continue
+            Length=int(sl[1])
+            Windows=mygenome.get(ContigName).RDWindows[-1]
+            Skip=False
+            ConI=0
             continue
-        sl=line.split()
-        ContigName=sl[0]
-        ConI=int(sl[1])
-        if ContigName in notcontigs:
+        if Skip:
             continue
-        elif ContigName in exicontigs:
-            mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
-        elif mygenome.hasContig(ContigName):
-            exicontigs.add(ContigName)
-            mygenome.get(ContigName).RDWindows[-1][ConI]=int(sl[-1])
-        else:
-            notcontigs.add(ContigName)
-            continue
+        Windows[ConI]=int(line)
+        ConI+=1
     DataFile.close()
     return
