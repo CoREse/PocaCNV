@@ -265,7 +265,7 @@ def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
                 if not first:
                     print("\n",end="",file=rdfile)
                 first=False
-                print("%s %s %s"%(c.Name, j, c.MixedRDRs[i][j]),end="",file=rdfile)
+                print("%s %s %.5f"%(c.Name, j, c.MixedRDRs[i][j]),end="",file=rdfile)
         rdfile.close()
     return
 
