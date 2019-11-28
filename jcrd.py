@@ -100,11 +100,9 @@ print("Samples read, calculating RD data...", file=sys.stderr)
 
 for c in mygenome:
     analyzeRD(c.RDWindows,c.Length,c, True)
+    print("%s analyzed. Memory usage: %sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 
-import os
-import psutil
-process = psutil.Process(os.getpid())
-print("Memory usage:%s"%(process.memory_info().rss),file=sys.stderr)
+print("Memory usage: %sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 writeMixedRDData(mygenome,ReferenceFile,SampleNames)
 exit(0)
 
