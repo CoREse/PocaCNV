@@ -48,7 +48,7 @@ for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="rdf":
         readRDData(mygenome,SampleNames,sys.argv[i])
         #OccurredWindowsN=len(RDWindows[0])
-        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().rss/1024/1024/1024),file=sys.stderr)
+        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     else:
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
@@ -68,7 +68,7 @@ for i in range(2,len(sys.argv)):
                     mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
-        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().rss/1024/1024/1024),file=sys.stderr)
+        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
@@ -95,7 +95,7 @@ if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
 
-print("Memory usage:%s"%(process.memory_info().rss),file=sys.stderr)
+print("Memory usage: %sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print("Samples read, calculating RD data...", file=sys.stderr)
 
 for c in mygenome:
