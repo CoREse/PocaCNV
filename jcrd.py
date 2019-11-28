@@ -89,6 +89,10 @@ if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
 
+import os
+import psutil
+process = psutil.Process(os.getpid())
+print("Memory usage:%s"%(process.memory_info().rss),file=sys.stderr)
 print("Samples read, calculating RD data...", file=sys.stderr)
 
 for c in mygenome:

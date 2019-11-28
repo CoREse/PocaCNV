@@ -155,9 +155,11 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 #RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
             #RDWindowAverages[i]=RDWindowSums[i]/SampleN
+        MixedRDRs=[]
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
-        MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate
+            MixedRDRs.append([0]*WindowsN)
+        #MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate, THIS is AWFUL! this will make SampleN copy of array objects, sharing the same memory space!
         """
         ZCount=0
         for i in range(OccurredWindowsN):
