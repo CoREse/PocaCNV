@@ -208,6 +208,8 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         for i in range(SampleN):
             for j in range(WindowsN):
                 MixedRDRs[i][j]=((MixedRDRs[i][j]/MRMedians[i])*2.0) if MRMedians[i]!=0 else 0#standardization to make median 2.0
+                if RDWindowAverages[j]==0:
+                    MixedRDRs[i][j]=2#if windows average is 0, we consider here is not valuable, so mark as normal(CN=2)
     """
     rdtestfile=open("data/rdtest.txt","a")
     for i in range(WindowsN):
@@ -271,13 +273,6 @@ def readRDData(mygenome, SampleNames, FileName):
     SampleName=FileName.split("\\")[-1].split("/")[-1][2:-4]
     SampleNames.append(SampleName)
     DataFile=open(FileName,"r")
-    Length=0
-    for line in DataFile:
-        if line[0]=='#':
-            if line.split(":")[0]=="#Length":
-                Length=int(line.split(":")[1])
-        break
-    DataFile.seek(0)
     ContigName=None
     mygenome.addSample(SampleName)
     i=0

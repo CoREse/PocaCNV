@@ -8,6 +8,10 @@ from readdepth import *
 from filters import *
 from contig import *
 
+import os
+import psutil
+process = psutil.Process(os.getpid())
+
 WriteRDData=False
 Contigs={}#if not vacant, contain only those contigs
 
@@ -44,6 +48,7 @@ for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="rdf":
         readRDData(mygenome,SampleNames,sys.argv[i])
         #OccurredWindowsN=len(RDWindows[0])
+        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().rss/1024/1024/1024),file=sys.stderr)
     else:
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
@@ -63,6 +68,7 @@ for i in range(2,len(sys.argv)):
                     mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
+        print("Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().rss/1024/1024/1024),file=sys.stderr)
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
@@ -89,15 +95,16 @@ if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
 
-import os
-import psutil
-process = psutil.Process(os.getpid())
 print("Memory usage:%s"%(process.memory_info().rss),file=sys.stderr)
 print("Samples read, calculating RD data...", file=sys.stderr)
 
 for c in mygenome:
     analyzeRD(c.RDWindows,c.Length,c, True)
 
+import os
+import psutil
+process = psutil.Process(os.getpid())
+print("Memory usage:%s"%(process.memory_info().rss),file=sys.stderr)
 writeMixedRDData(mygenome,ReferenceFile,SampleNames)
 exit(0)
 
