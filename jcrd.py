@@ -49,7 +49,7 @@ for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="rdf":
         readRDData(mygenome,SampleNames,sys.argv[i])
         #OccurredWindowsN=len(RDWindows[0])
-        print(gettime()+"Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+        print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     else:
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
@@ -69,7 +69,7 @@ for i in range(2,len(sys.argv)):
                     mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
-        print(gettime()+"Sample %s read. Memory usage:%sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+        print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
@@ -96,14 +96,14 @@ if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
 
-print("Memory usage: %sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print(gettime()+"Samples read, calculating RD data...", file=sys.stderr)
 
 for c in mygenome:
     analyzeRD(c.RDWindows,c.Length,c, True)
-    print(gettime()+"%s analyzed. Memory usage: %sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+    print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 
-print("Memory usage: %sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 writeMixedRDData(mygenome,ReferenceFile,SampleNames)
 exit(0)
 
