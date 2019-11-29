@@ -198,7 +198,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         for i in range(SampleN):
             for j in range(WindowsN):
                 WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
-                MixedRDRs[i][j]=WR/SampleSequenceDepthRatio[i]
+                MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
                 '''
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
