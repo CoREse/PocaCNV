@@ -313,7 +313,7 @@ def readRDData(mygenome, SampleNames, FileName):
             ConI+=1
     except IndexError as e:
         if len(Windows)<=ConI:
-            print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)))
+            print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
         else:
             raise e
     DataFile.close()
