@@ -289,7 +289,7 @@ def readRDData(mygenome, SampleNames, FileName):
     SampleNameS=SampleName.split("rd")
     SampleName=""
     for s in SampleNameS[1:]:
-        SampleNames+=s
+        SampleName+=s
     SampleNames.append(SampleName)
     DataFile=open(FileName,"r")
     ContigName=None
