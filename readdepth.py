@@ -285,7 +285,11 @@ def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
     return
 
 def readRDData(mygenome, SampleNames, FileName):
-    SampleName=FileName.split("\\")[-1].split("/")[-1][2:-4]
+    SampleName=FileName.split("\\")[-1].split("/")[-1][:-4]
+    SampleNameS=SampleName.split("rd")
+    SampleName=""
+    for s in SampleNameS[1:]:
+        SampleNames+=s
     SampleNames.append(SampleName)
     DataFile=open(FileName,"r")
     ContigName=None
