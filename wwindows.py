@@ -3,6 +3,7 @@ mul=int(sys.argv[1])
 pref=sys.argv[2]
 for fn in sys.argv[3:]:
     SampleName=fn.split("\\")[-1].split("/")[-1][:-4]
+    print("transforming %s..."%fn,file=sys.stderr)
     nfn="%s/%s%s.rdf"%(pref,mul,SampleName)
     nf=open(nfn,"w")
     first=True
