@@ -13,7 +13,7 @@ import os
 import psutil
 process = psutil.Process(os.getpid())
 
-WriteRDData=False
+WriteRDData=True
 Contigs={}#if not vacant, contain only those contigs
 
 print("Joint calling started...", file=sys.stderr)
@@ -27,7 +27,7 @@ for tid in range(ReferenceFile.nreferences):
     if len(Contigs)!=0:
         if ReferenceFile.references[tid] not in Contigs:
             continue
-    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+1)
+    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+(1 if ReferenceFile.length[tid]%RDWindowSize!=0 else 0))
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
@@ -70,6 +70,9 @@ for i in range(2,len(sys.argv)):
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
         print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+    if WriteRDData:
+        print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
+        writeSampleRDData(mygenome,SampleNames[-1],SampleIndex)
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
@@ -91,10 +94,11 @@ for c in OccurredContigs:
 EAFile=open("data/exclusion_regions.txt","r")
 readExcludedAreas(EAFile,ContigNameOccurred)
 EAFile.close()
-
+'''
 if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
+'''
 
 print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print(gettime()+"Samples read, calculating RD data...", file=sys.stderr)

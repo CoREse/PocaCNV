@@ -257,6 +257,19 @@ def writeRDData(mygenome,ReferenceFile,SampleNames):
         rdfile.close()
     return
 
+def writeSampleRDData(mygenome, SampleName, SampleI):
+    rdfile=open("data/rd%s.rdf"%(SampleNames),"w")
+    first=True
+    for c in mygenome.Contigs:
+        if not first:
+            print("\n",end="",file=rdfile)
+        first=False
+        print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
+        for j in range(len(c.RDWindows[SampleI])):
+            print("\n%s"%(c.RDWindows[SampleI][j]),end="",file=rdfile)
+    rdfile.close()
+    return
+
 def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
     ReferenceFile:pysam.FastaFile
     for i in range(len(SampleNames)):
@@ -281,21 +294,27 @@ def readRDData(mygenome, SampleNames, FileName):
     Skip=False
     Windows=None
     ConI=0
-    for line in DataFile:
-        if line[0]=='#':
-            sl=line[1:].split()
-            ContigName=sl[0]
-            if not mygenome.hasContig(ContigName):
-                Skip=True
+    try:
+        for line in DataFile:
+            if line[0]=='#':
+                sl=line[1:].split()
+                ContigName=sl[0]
+                if not mygenome.hasContig(ContigName):
+                    Skip=True
+                    continue
+                Length=int(sl[1])
+                Windows=mygenome.get(ContigName).RDWindows[-1]
+                Skip=False
+                ConI=0
                 continue
-            Length=int(sl[1])
-            Windows=mygenome.get(ContigName).RDWindows[-1]
-            Skip=False
-            ConI=0
-            continue
-        if Skip:
-            continue
-        Windows[ConI]=int(line)
-        ConI+=1
+            if Skip:
+                continue
+            Windows[ConI]=int(line)
+            ConI+=1
+    except IndexError as e:
+        if len(Windows)<=ConI:
+            print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)))
+        else:
+            raise e
     DataFile.close()
     return

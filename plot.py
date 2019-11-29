@@ -19,6 +19,7 @@ for i in range(len(data)):
     Pos.append(i+1)
 D/=len(data)
 print("A:%s, D:%s"%(Average,D))
-pyplot.plot(Pos,data,".")
+pyplot.plot(data)
+#pyplot.plot(Pos,data,".")
 #pyplot.bar(len(data),data)
 pyplot.show()
