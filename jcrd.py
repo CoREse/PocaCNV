@@ -27,7 +27,7 @@ for tid in range(ReferenceFile.nreferences):
     if len(Contigs)!=0:
         if ReferenceFile.references[tid] not in Contigs:
             continue
-    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+(1 if ReferenceFile.length[tid]%RDWindowSize!=0 else 0))
+    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+(1 if ReferenceFile.lengths[tid]%RDWindowSize!=0 else 0))
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
