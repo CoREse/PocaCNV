@@ -258,7 +258,7 @@ def writeRDData(mygenome,ReferenceFile,SampleNames):
     return
 
 def writeSampleRDData(mygenome, SampleName, SampleI):
-    rdfile=open("data/rd%s.rdf"%(SampleNames),"w")
+    rdfile=open("data/rd%s.rdf"%(SampleName),"w")
     first=True
     for c in mygenome.Contigs:
         if not first:
