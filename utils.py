@@ -1,4 +1,4 @@
-from globals import *
+import globals as g
 import time
 
 def gettime():
@@ -28,8 +28,8 @@ def inclusion(In1,In2):#return 0: not overlapped, 1: overlapped, 2: In1 include 
 
 def getTidByCord(Cordinate):
     i=1
-    while i<len(RefStartPos):
-        if Cordinate<RefStartPos[i]:
+    while i<len(g.RefStartPos):
+        if Cordinate<g.RefStartPos[i]:
             return i-1
         i+=1
     return i-1

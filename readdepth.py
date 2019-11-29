@@ -1,5 +1,4 @@
-import globals
-from globals import *
+import globals as g
 from utils import *
 import sys
 from contig import *
@@ -11,8 +10,8 @@ class RDInterval:
         self.WBegin=WBegin
         self.WEnd=WEnd
         self.AverageRD=ARD
-        self.Begin=WBegin*RDWindowSize
-        self.End=WEnd*RDWindowSize
+        self.Begin=WBegin*g.RDWindowSize
+        self.End=WEnd*g.RDWindowSize
         self.Sample=Sample
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
         if self.AverageRD<0.1:
@@ -230,8 +229,8 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             MixedRDRs[i][j]/=ERD
     ERD=1.0
     '''
-    globals.ERD=1.0#ERD
-    globals.MixedRDRs=MixedRDRs
+    g.ERD=1.0#ERD
+    g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
     if NormalizationOnly:
         return MixedRDRs
@@ -294,27 +293,28 @@ def readRDData(mygenome, SampleNames, FileName):
     Skip=False
     Windows=None
     ConI=0
-    try:
-        for line in DataFile:
-            if line[0]=='#':
-                sl=line[1:].split()
-                ContigName=sl[0]
-                if not mygenome.hasContig(ContigName):
-                    Skip=True
-                    continue
-                Length=int(sl[1])
-                Windows=mygenome.get(ContigName).RDWindows[-1]
-                Skip=False
-                ConI=0
+    for line in DataFile:
+        if line[0]=='#':
+            sl=line[1:].split()
+            ContigName=sl[0]
+            if not mygenome.hasContig(ContigName):
+                Skip=True
                 continue
-            if Skip:
-                continue
-            Windows[ConI]=int(line)
-            ConI+=1
-    except IndexError as e:
-        if len(Windows)<=ConI:
-            print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
-        else:
-            raise e
+            Length=int(sl[1])
+            Windows=mygenome.get(ContigName).RDWindows[-1]
+            Skip=False
+            ConI=0
+            continue
+        if Skip:
+            continue
+        #try:
+        #    Windows[ConI]=int(line)
+        #except IndexError as e:
+        #    if len(Windows)<=ConI:
+        #        print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
+        #    else:
+        #        raise e
+        Windows[ConI]=int(line)
+        ConI+=1
     DataFile.close()
     return

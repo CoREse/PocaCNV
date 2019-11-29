@@ -1,7 +1,7 @@
 import pysam
 import sys
 import time
-from globals import *
+import globals
 from calling import *
 from readpair import *
 from readdepth import *
@@ -13,7 +13,7 @@ import os
 import psutil
 process = psutil.Process(os.getpid())
 
-WriteRDData=True
+WriteRDData=False
 Contigs={}#if not vacant, contain only those contigs
 
 print("Joint calling started...", file=sys.stderr)
@@ -27,7 +27,7 @@ for tid in range(ReferenceFile.nreferences):
     if len(Contigs)!=0:
         if ReferenceFile.references[tid] not in Contigs:
             continue
-    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/RDWindowSize)+(1 if ReferenceFile.lengths[tid]%RDWindowSize!=0 else 0))
+    c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/globals.RDWindowSize)+(1 if ReferenceFile.lengths[tid]%globals.RDWindowSize!=0 else 0))
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
@@ -64,9 +64,9 @@ for i in range(2,len(sys.argv)):
                     CID=mygenome.getContigID(read.tid)
                     if CID==-1:
                         continue
-                    mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
+                    mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
                 else:
-                    mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/RDWindowSize)]+=1
+                    mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
                 OccurredContigs[read.reference_id]=True
         SamFile.close()
         print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
@@ -88,7 +88,7 @@ if len(RDWindows)>1:
 '''
 
 for c in OccurredContigs:
-    OccurredWindowsN+=int(ReferenceFile.lengths[c]/RDWindowSize)+1
+    OccurredWindowsN+=int(ReferenceFile.lengths[c]/globals.RDWindowSize)+1
     ContigNameOccurred[ReferenceFile.references[c]]=True
 
 EAFile=open("data/exclusion_regions.txt","r")

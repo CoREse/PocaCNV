@@ -1,12 +1,12 @@
 import pysam
-from globals import *
 from utils import *
 from readpair import PairInfo
+import globals as g
 
 ExcludedAreas=[]
 ExcludedAreasByContig={}
 def readExcludedAreas(DataFile,ContigNameOccurred=None):
-    for i in range(len(RefInd)):
+    for i in range(len(g.RefInd)):
         ExcludedAreasByContig[i]=[]
     for line in DataFile:
         sl=line.split()
@@ -14,9 +14,9 @@ def readExcludedAreas(DataFile,ContigNameOccurred=None):
             continue
         Contig=sl[0]
         try:
-            Start=int(sl[1])+RefStartPos[RefInd[Contig]]
-            End=int(sl[2])+RefStartPos[RefInd[Contig]]
-            ExcludedAreasByContig[RefInd[Contig]].append((Start,End))
+            Start=int(sl[1])+RefStartPos[g.RefInd[Contig]]
+            End=int(sl[2])+RefStartPos[g.RefInd[Contig]]
+            ExcludedAreasByContig[g.RefInd[Contig]].append((Start,End))
             if ContigNameOccurred!=None:
                 if not ContigNameOccurred[Contig]:
                     continue
