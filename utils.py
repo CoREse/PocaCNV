@@ -1,4 +1,8 @@
 from globals import *
+import time
+
+def gettime():
+    return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
 
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
