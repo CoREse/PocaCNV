@@ -4,6 +4,7 @@ import sys
 from contig import *
 import statistics
 from array import array
+import rpy2.robjects as robjects
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):
@@ -14,12 +15,14 @@ class RDInterval:
         self.End=WEnd*g.RDWindowSize
         self.Sample=Sample
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
-        if self.AverageRD<0.1:
-            self.CN=0
-        elif self.AverageRD<0.75:
+        if 1.8<self.AverageRD<2.2:
+            self.CN=2
+        elif 1.5<=self.AverageRD<=1.8:
             self.CN=1
+        elif 2.2<=self.AverageRD<=1.5:
+            self.CN=3
         else:
-            self.CN=int(self.AverageRD+0.5)*2-1
+            self.CN=int(self.AverageRD+0.5)
         if self.CN==0 or self.CN==1:
             self.SupportedSVType=0
         elif self.CN>2:
@@ -45,31 +48,52 @@ def sigDiff(RDRs,i,CurrentRunRatio):
 
 
 def makeRDIntervals(MixedRDRs):
-    EvidenceIntervals=[]
     for i in range(len(MixedRDRs)):#for each sample
-        CurrentRunStart=0
-        CurrentRunRatio=1
-        for j in range(1,len(MixedRDRs[i])):
-            if sigDiff(MixedRDRs[i],j,CurrentRunRatio):
-                if CurrentRunRatio!=1:
-                    LastInterval=RDInterval(i,CurrentRunStart,j-1,CurrentRunRatio)
-                    if LastInterval.CN!=2:
-                        EvidenceIntervals.append(LastInterval)
-                CurrentRunRatio=(MixedRDRs[i][j]+MixedRDRs[i][j-1])/2
-                CurrentRunStart=j-1
-            elif CurrentRunRatio!=1:
-                CurrentRunRatio=(CurrentRunRatio*(j-CurrentRunStart)+MixedRDRs[i][j])/(j-CurrentRunStart+1)
-        if CurrentRunRatio!=1:
-            LastInterval=RDInterval(CurrentRunStart,len(MixedRDRs[i]),CurrentRunRatio)
-            if LastInterval.CN!=2:
-                EvidenceIntervals.append(LastInterval)
-    return EvidenceIntervals
+        CutOffs=segmentation(MixedRDRs[i])
+        Intervals=[]
+        Last=0
+        for End,Ave in CutOffs:
+            Intervals.append(RDInterval(i,Last,End,Ave))
+            Last=End
+    return Intervals
 
-def makeRDICandidates(RDIs):
+def segmentation(data):
+    return dnacopy_cbs(data)
+
+def dnacopy_cbs(data):
+    datastring=""
+    first=True
+    for d in data:
+        if not first:
+            datastring+=","
+        first=False
+        datastring+="%.7s"%d
+    robjects.r("rddata=data.frame(mrd=c(%s))"%datastring)
+    sf=open("dnacopy_cbs.r","r")
+    script=str(sf.read())
+    sf.close()
+    x=robjects.r(script)
+    datavec=x[1]
+    ends=datavec[3]
+    means=datavec[5]
+    CutOffs=[]
+    for i in range(len(ends)):
+        CutOffs.append((ends[i],means[i]))
+    return CutOffs
+
+def extractEvidences(Intervals):
+    Evidences=[]
+    for I in Intervals:
+        if I.CN!=2:
+            e=Evidence()
+            e.setData(1,I)
+            Evidences.append(e)
+    return Evidences
+            
+
+def makeRDICandidates(Evidences):
     Candidates=[]
-    for i in RDIs:
-        e=Evidence()
-        e.setData(1,i)
+    for e in Evidences:
         Candidates.append(Candidate([e]))
     Candidates=combineCandidateSets(Candidates,[])
     return Candidates
@@ -232,12 +256,13 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     g.ERD=1.0#ERD
     g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
+    TheContig.RDWindowStandards=RDWindowAverages
     if NormalizationOnly:
         return MixedRDRs
         
     #partition(MixedRDRs)
 
-    RDICandidates=makeRDICandidates(makeRDIntervals(MixedRDRs))
+    RDICandidates=makeRDICandidates(extractEvidences(makeRDIntervals(MixedRDRs)))
     return RDICandidates
 
 import pysam

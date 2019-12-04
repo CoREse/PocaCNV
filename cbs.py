@@ -2,6 +2,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import logging
+from utils import gettime
 
 log = logging.getLogger()
 logging.basicConfig(level=logging.WARN)
@@ -150,7 +151,11 @@ if __name__ == '__main__':
     dfile.close()
     #sample = generate_normal_time_series(5)
     #print(sample)
+    print(gettime()+"segmenting...",file=sys.stderr)
     L = segment(sample)
+    print("segments:%s"%L)
+    print(gettime()+"validating...",file=sys.stderr)
     S = validate(sample, L)
+    print(gettime()+"Done analyzing.")
     ax = draw_segmented_data(sample,  S, title='Circular Binary Segmentation of Data')
     ax.get_figure().savefig('plot.png')

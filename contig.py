@@ -6,6 +6,8 @@ class Contig:
         self.Length=length
         self.RDWindows=[]
         self.SampleNames=[]
+        self.MixedRDRs=None
+        self.RDWindowStandards=None
 
     def addSample(self,name=""):
         self.RDWindows.append(array("I",[0]*self.Length))

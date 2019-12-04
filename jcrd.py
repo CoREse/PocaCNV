@@ -103,19 +103,22 @@ if WriteRDData:
 print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print(gettime()+"Samples read, calculating RD data...", file=sys.stderr)
 
-for c in mygenome:
-    analyzeRD(c.RDWindows,c.Length,c, True)
-    print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+#for c in mygenome:
+#    analyzeRD(c.RDWindows,c.Length,c, True)
+#    print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 
-print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
-writeMixedRDData(mygenome,ReferenceFile,SampleNames)
-exit(0)
+#print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+#writeMixedRDData(mygenome,ReferenceFile,SampleNames)
+#exit(0)
 
 RDICandidates=[]
 for c in mygenome:
-    RDICandidates.append(analyzeRD(c.RDWindows,c.Length,c))
-    RDICandidates[-1]=filtExcludedAreas(RDICandidates[-1])
+    c.RDICandidates=analyzeRD(c.RDWindows,c.Length,c)
+    c.RDICandidates=filtExcludedAreas(c.RDICandidates)
+    RDICandidates.append(c.RDICandidates)
+    print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
+print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 
 Candidates=RDICandidates
 """

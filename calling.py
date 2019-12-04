@@ -2,11 +2,30 @@ from globals import *
 import globals
 from utils import *
 import math
+from scipy.stats import poisson
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
 
+def getRDScore(C, TheContig):
+    Score=0
+    for e in C.Evidences:
+        mu=0
+        length=int(e.End/globals.RDWindowSize)-int(e.Begin/globals.RDWindowSize)
+        for i in range(int(e.Begin/globals.RDWindowSize),int(e.End/globals.RDWindowSize)):
+            mu+=TheContig.RDWindowStandards[i]
+        mu=int(mu)
+        v=e.Data.AverageRD*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
+        qint=poisson.interval(0.999,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
+        if qint[0]<v<qint[1]:
+            Score+=1
+        qint=poisson.interval(0.9999,mu)
+        if qint[0]<v<qint[1]:
+            Score+=1
+    return Score
+
 def getScore(C,TheContig):
+    return getRDScore(C,TheContig)
     Score=0
     RDScore=0
     U=0
@@ -79,7 +98,7 @@ def callSV(ReferenceFile,C,TheContig):
     SVType=getSVType(C)
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
-    if Score>215:
+    if Score>2:
         SV+=ReferenceFile.references[getTidByCord(C.Begin)]+":"+str(1+C.Begin-RefStartPos[getTidByCord(C.Begin)])+"-"+ReferenceFile.references[getTidByCord(C.End)]+":"+str(1+C.End-RefStartPos[getTidByCord(C.End)])
         SV+=", "+SVType
         SV+=", Breakpoint:[%s,%s]"%(ReferenceFile.references[getTidByCord(BKL)]+":"+str(1+BKL-RefStartPos[getTidByCord(BKL)]),ReferenceFile.references[getTidByCord(BKR)]+":"+str(1+BKR-RefStartPos[getTidByCord(BKR)]))
