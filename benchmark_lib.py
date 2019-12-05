@@ -344,8 +344,8 @@ def parse_my(filename,contigs=None, samples=None):
             sl=line.split(",")
             blockstart=int(sl[0].split("-")[0].split(":")[1])
             blockend=int(sl[0].split("-")[1].split(":")[1])
-            breakstart=int(sl[-2].split(":")[-1])
-            breakend=int(sl[-1].split(":")[1].split("]")[0])
+            breakstart=int(sl[2].split(":")[-1])
+            breakend=int(sl[3].split(":")[1].split("]")[0])
             temp=interval(sl[0].split(":")[0],breakstart,breakend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
             records.append(temp)
         except:

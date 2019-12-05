@@ -5,7 +5,7 @@ from contig import *
 import statistics
 from array import array
 import rpy2.robjects as robjects
-from multiprocessing import Process,Queue,Array,Pipe,Manager,Pool
+from multiprocessing import Manager,Pool
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):

@@ -34,9 +34,6 @@ RefLength=PosCount
 
 print(gettime()+"Reading samples...",file=sys.stderr)
 SampleIndex=0
-OccurredWindowsN=0
-OccurredContigs={}
-ContigNameOccurred={}
 
 PairCount=0
 ReadCount=0
@@ -67,7 +64,6 @@ for i in range(2,len(sys.argv)):
                     mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
                 else:
                     mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
-                OccurredContigs[read.reference_id]=True
         SamFile.close()
         print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     if WriteRDData:
@@ -87,13 +83,9 @@ if len(RDWindows)>1:
         RDWindows[SumI][i]/=SumI
 '''
 
-for c in OccurredContigs:
-    OccurredWindowsN+=int(ReferenceFile.lengths[c]/globals.RDWindowSize)+1
-    ContigNameOccurred[ReferenceFile.references[c]]=True
-
-EAFile=open("data/exclusion_regions.txt","r")
-readExcludedAreas(EAFile,ContigNameOccurred)
-EAFile.close()
+#EAFile=open("data/exclusion_regions.txt","r")
+#readExcludedAreas(EAFile,ContigNameOccurred)
+#EAFile.close()
 '''
 if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
@@ -114,7 +106,7 @@ print(gettime()+"Samples read, calculating RD data...", file=sys.stderr)
 RDICandidates=[]
 for c in mygenome:
     c.RDICandidates=analyzeRD(c.RDWindows,c.Length,c)
-    c.RDICandidates=filtExcludedAreas(c.RDICandidates)
+    #c.RDICandidates=filtExcludedAreas(c.RDICandidates)
     RDICandidates.append(c.RDICandidates)
     print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
