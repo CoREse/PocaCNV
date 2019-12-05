@@ -49,6 +49,7 @@ def sigDiff(RDRs,i,CurrentRunRatio):
 
 def makeRDIntervals(MixedRDRs):
     for i in range(len(MixedRDRs)):#for each sample
+        print(gettime()+"segmenting %s..."%g.SampleNames[i],file=sys.stderr)
         CutOffs=segmentation(MixedRDRs[i])
         Intervals=[]
         Last=0
@@ -171,6 +172,7 @@ def partition(RDRs):
     exit(0)
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
+    print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)

@@ -76,7 +76,7 @@ for i in range(2,len(sys.argv)):
     SampleIndex+=1
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
-
+globals.SampleNames=SampleNames
 '''
 if len(RDWindows)>1:
     RDWindows.append([0]*WindowsN)#last sample is the s/"sum sample"/"average sample", because sum sample will significantly influence the WR variable

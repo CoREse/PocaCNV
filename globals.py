@@ -7,3 +7,4 @@ ISSD=150
 RDWindowSize=100
 MixedRDRs=None
 ERD=0
+SampleNames=None
