@@ -91,6 +91,12 @@ def prefilters(C):
         return False
     return True
 
+def getInvolvedSamples(C):
+    Ss=set()
+    for e in C.Evidences:
+        Ss.add(e.Sample)
+    return Ss
+
 def callSV(ReferenceFile,C,TheContig):
     SV=""
     if prefilters(C)!=True:
@@ -98,8 +104,13 @@ def callSV(ReferenceFile,C,TheContig):
     SVType=getSVType(C)
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
+    InvolvedSamples=getInvolvedSamples(C)
+    InvolvedSamples=list(InvolvedSamples).sort()
     if Score>2:
         SV+=TheContig.Name+":"+str(1+C.Begin)+"-"+TheContig.Name+":"+str(1+C.End)
         SV+=", "+SVType
         SV+=", Breakpoint:[%s,%s]"%(TheContig.Name+":"+str(1+BKL),TheContig.Name+":"+str(1+BKR))
+        SV+=", Sample(s):"
+        for SI in InvolvedSamples:
+            SV+=" "+g.SampleNames[SI]
     return SV
