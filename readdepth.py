@@ -60,6 +60,7 @@ def makeRDIntervals(MixedRDRs):
 def segmentation(data):
     return dnacopy_cbs(data)
 
+script=None
 def dnacopy_cbs(data):
     datastring=""
     first=True
@@ -69,9 +70,11 @@ def dnacopy_cbs(data):
         first=False
         datastring+="%.7s"%d
     robjects.r("rddata=data.frame(mrd=c(%s))"%datastring)
-    sf=open("dnacopy_cbs.r","r")
-    script=str(sf.read())
-    sf.close()
+    global script
+    if script==None:
+        sf=open("dnacopy_cbs.r","r")
+        script=str(sf.read())
+        sf.close()
     x=robjects.r(script)
     datavec=x[1]
     ends=datavec[3]
