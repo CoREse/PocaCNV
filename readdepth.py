@@ -276,6 +276,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
     TheContig.RDWindowStandards=RDWindowAverages
+    TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs
         
