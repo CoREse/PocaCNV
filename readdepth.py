@@ -5,7 +5,7 @@ from contig import *
 import statistics
 from array import array
 import rpy2.robjects as robjects
-from multiprocessing import Process,Queue,Array,Pipe
+from multiprocessing import Process,Queue,Array,Pipe,Manager
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):
@@ -47,15 +47,13 @@ def sigDiff(RDRs,i,CurrentRunRatio):
             return True
     return False
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,Conn=None):
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals):
     print(gettime()+"segmenting %s..."%g.SampleNames[SampleI],file=sys.stderr)
     CutOffs=segmentation(SampleMRDRs)
     Last=0
     for End,Ave in CutOffs:
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
         Last=End
-    if Conn!=None:
-        Conn.send(SampleIntervals)
 
 def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiprocessing instead of multithreading
     Intervals=[None]*len(MixedRDRs)
@@ -65,22 +63,20 @@ def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiproces
             makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
     else:
         k=0
+        manager=Manager()
         while k < len(MixedRDRs):#for each sample
             ts=[]
             for j in range(g.ThreadN):
                 i=k+j
                 if i>=len(MixedRDRs):
                     break
-                Intervals[i]=[]
+                Intervals[i]=manager.list()
                 PC,CC=Pipe()
-                ts.append((Process(target=makeSampleRDIntervals,args=(MixedRDRs[i],i,Intervals[i],CC)),PC))
-                #makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
+                ts.append(Process(target=makeSampleRDIntervals,args=(MixedRDRs[i],i,Intervals[i])))
             for t in ts:
-                t[0].start()
-            for q in range(len(ts)):
-                Intervals[q]=ts[q][1].recv()
-                ts[q][0].join()
-            #Intervals[SampleI]=SampleInt
+                t.start()
+            for t in ts:
+                t.join()\
             k+=g.ThreadN
     return Intervals
 
