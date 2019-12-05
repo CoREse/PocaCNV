@@ -1,7 +1,7 @@
 if (!requireNamespace("DNAcopy", quietly = TRUE))
 {
 if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+    install.packages("BiocManager",quiet=TRUE)
 BiocManager::install("DNAcopy")
 }
 library(DNAcopy)
