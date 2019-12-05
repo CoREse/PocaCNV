@@ -48,13 +48,14 @@ def sigDiff(RDRs,i,CurrentRunRatio):
 
 
 def makeRDIntervals(MixedRDRs):
+    Intervals=[None]*len(MixedRDRs)
     for i in range(len(MixedRDRs)):#for each sample
         print(gettime()+"segmenting %s..."%g.SampleNames[i],file=sys.stderr)
         CutOffs=segmentation(MixedRDRs[i])
-        Intervals=[]
+        Intervals[i]=[]
         Last=0
         for End,Ave in CutOffs:
-            Intervals.append(RDInterval(i,Last,End,Ave))
+            Intervals[i].append(RDInterval(i,Last,End,Ave))
             Last=End
     return Intervals
 
@@ -87,11 +88,12 @@ def dnacopy_cbs(data):
 
 def extractEvidences(Intervals):
     Evidences=[]
-    for I in Intervals:
-        if I.CN!=2:
-            e=Evidence()
-            e.setData(1,I)
-            Evidences.append(e)
+    for S in Intervals:
+        for I in S:
+            if I.CN!=2:
+                e=Evidence()
+                e.setData(1,I)
+                Evidences.append(e)
     return Evidences
             
 
