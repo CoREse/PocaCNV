@@ -5,6 +5,7 @@ from contig import *
 import statistics
 from array import array
 import rpy2.robjects as robjects
+from multiprocessing import Process,Queue,Array,Pipe
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):
@@ -46,17 +47,41 @@ def sigDiff(RDRs,i,CurrentRunRatio):
             return True
     return False
 
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,Conn=None):
+    print(gettime()+"segmenting %s..."%g.SampleNames[SampleI],file=sys.stderr)
+    CutOffs=segmentation(SampleMRDRs)
+    Last=0
+    for End,Ave in CutOffs:
+        SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
+        Last=End
+    if Conn!=None:
+        Conn.send(SampleIntervals)
 
-def makeRDIntervals(MixedRDRs):
+def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiprocessing instead of multithreading
     Intervals=[None]*len(MixedRDRs)
-    for i in range(len(MixedRDRs)):#for each sample
-        print(gettime()+"segmenting %s..."%g.SampleNames[i],file=sys.stderr)
-        CutOffs=segmentation(MixedRDRs[i])
-        Intervals[i]=[]
-        Last=0
-        for End,Ave in CutOffs:
-            Intervals[i].append(RDInterval(i,Last,End,Ave))
-            Last=End
+    if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
+        for i in range(len(MixedRDRs)):
+            Intervals[i]=[]
+            makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
+    else:
+        k=0
+        while k < len(MixedRDRs):#for each sample
+            ts=[]
+            for j in range(g.ThreadN):
+                i=k+j
+                if i>=len(MixedRDRs):
+                    break
+                Intervals[i]=[]
+                PC,CC=Pipe()
+                ts.append((Process(target=makeSampleRDIntervals,args=(MixedRDRs[i],i,Intervals[i],CC)),PC))
+                #makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
+            for t in ts:
+                t[0].start()
+            for q in range(len(ts)):
+                Intervals[q]=ts[q][1].recv()
+                ts[q][0].join()
+            #Intervals[SampleI]=SampleInt
+            k+=g.ThreadN
     return Intervals
 
 def segmentation(data):

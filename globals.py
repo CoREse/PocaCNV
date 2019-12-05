@@ -8,3 +8,4 @@ RDWindowSize=100
 MixedRDRs=None
 ERD=0
 SampleNames=None
+ThreadN=8

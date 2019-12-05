@@ -99,7 +99,7 @@ def callSV(ReferenceFile,C,TheContig):
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
     if Score>2:
-        SV+=ReferenceFile.references[getTidByCord(C.Begin)]+":"+str(1+C.Begin-RefStartPos[getTidByCord(C.Begin)])+"-"+ReferenceFile.references[getTidByCord(C.End)]+":"+str(1+C.End-RefStartPos[getTidByCord(C.End)])
+        SV+=TheContig.Name+":"+str(1+C.Begin)+"-"+TheContig.Name+":"+str(1+C.End)
         SV+=", "+SVType
-        SV+=", Breakpoint:[%s,%s]"%(ReferenceFile.references[getTidByCord(BKL)]+":"+str(1+BKL-RefStartPos[getTidByCord(BKL)]),ReferenceFile.references[getTidByCord(BKR)]+":"+str(1+BKR-RefStartPos[getTidByCord(BKR)]))
+        SV+=", Breakpoint:[%s,%s]"%(TheContig.Name+":"+str(1+BKL),TheContig.Name+":"+str(1+BKR))
     return SV

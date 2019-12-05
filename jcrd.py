@@ -16,7 +16,7 @@ process = psutil.Process(os.getpid())
 WriteRDData=False
 Contigs={}#if not vacant, contain only those contigs
 
-print("Joint calling started...", file=sys.stderr)
+print(gettime()+"Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])
 PosCount=0
 mygenome=Genome(ReferenceFile.filename)
@@ -32,7 +32,7 @@ for tid in range(ReferenceFile.nreferences):
     mygenome.append(c)
 RefLength=PosCount
 
-print("Reading samples...",file=sys.stderr)
+print(gettime()+"Reading samples...",file=sys.stderr)
 SampleIndex=0
 OccurredWindowsN=0
 OccurredContigs={}
