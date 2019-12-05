@@ -105,7 +105,8 @@ def callSV(ReferenceFile,C,TheContig):
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
     InvolvedSamples=getInvolvedSamples(C)
-    InvolvedSamples=list(InvolvedSamples).sort()
+    InvolvedSamples=list(InvolvedSamples)
+    InvolvedSamples.sort()
     if Score>2:
         SV+=TheContig.Name+":"+str(1+C.Begin)+"-"+TheContig.Name+":"+str(1+C.End)
         SV+=", "+SVType

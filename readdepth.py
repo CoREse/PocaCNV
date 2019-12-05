@@ -5,7 +5,7 @@ from contig import *
 import statistics
 from array import array
 import rpy2.robjects as robjects
-from multiprocessing import Process,Queue,Array,Pipe,Manager
+from multiprocessing import Process,Queue,Array,Pipe,Manager,Pool
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD):
@@ -62,22 +62,13 @@ def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiproces
             Intervals[i]=[]
             makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
     else:
-        k=0
         manager=Manager()
-        while k < len(MixedRDRs):#for each sample
-            ts=[]
-            for j in range(g.ThreadN):
-                i=k+j
-                if i>=len(MixedRDRs):
-                    break
-                Intervals[i]=manager.list()
-                PC,CC=Pipe()
-                ts.append(Process(target=makeSampleRDIntervals,args=(MixedRDRs[i],i,Intervals[i])))
-            for t in ts:
-                t.start()
-            for t in ts:
-                t.join()\
-            k+=g.ThreadN
+        pool=Pool(g.ThreadN)
+        args=[]
+        for i in range(len(MixedRDRs)):
+            Intervals[i]=manager.list()
+            args.append((MixedRDRs[i],i,Intervals[i]))
+        pool.starmap(makeSampleRDIntervals,args)
     return Intervals
 
 def segmentation(data):
