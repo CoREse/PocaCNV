@@ -238,7 +238,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             SampleAverages[j]=SampleSums[j]/WindowsN
             SampleSumAverage+=SampleSums[j]
         SampleSumAverage/=SampleN
-        SampleSequenceDepthRatio=[0]*SampleN
+        #SampleSequenceDepthRatio=[0]*SampleN
         #SampleMedians=[0]*SampleN
         #print(SampleSumAverage, SampleSums, SampleMedians, TheContig.Name)
         #for j in range(SampleN):
@@ -251,6 +251,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         for i in range(SampleN):
             for j in range(WindowsN):
                 WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else 0
+                MixedRDRs[i][j]=WR
                 #MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
                 '''
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
@@ -286,7 +287,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     g.ERD=1.0#ERD
     g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
-    TheContig.RDWindowStandards=RDWindowAverages
+    TheContig.RDWindowStandards=RDWindowStandards
     TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs
