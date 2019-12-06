@@ -232,7 +232,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 SampleSums[j]+=RDWindows[j][i]
                 WindowSamples[j]=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
-            RDWindowMedians=statistics.median(WindowSamples)
+            RDWindowMedians[i]=statistics.median(WindowSamples)
         SampleSumAverage=0
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN

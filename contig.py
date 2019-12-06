@@ -10,7 +10,7 @@ class Contig:
         self.RDWindowStandards=None
 
     def addSample(self,name=""):
-        self.RDWindows.append(array("I",[0]*self.Length))
+        self.RDWindows.append(array("f",[0]*self.Length))
         self.SampleNames.append(name)
     """
     def __getitem__(self,i):
