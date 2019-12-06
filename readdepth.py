@@ -185,13 +185,21 @@ def partition(RDRs):
     print(len(Separator), diverify(RDRs,Separator,0),file=sys.stderr) 
     exit(0)
 
+def unifyRD(RDWindows):
+    for s in range(len(RDWindows)):
+        for i in range(len(RDWindows[s])):
+            RDWindows[s][i]/=g.SequenceDepthRatio[s]
+
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
+    RDWindowMedians=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=[0]*SampleN
+    RDWindowStandards=RDWindowMedians
+    unifyRD(RDWindows)#rd/ratio doesnt' obey same dist that coverage/ratio obeys(different variance), so it's better all samples from the same sequence coverage
     if SampleN<2:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
             for j in range(SampleN):
@@ -217,11 +225,14 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 #WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
                 #MixedRDRs[i][j]=(SR-WR)/SampleN+WR
     else:
+        WindowSamples=[0]*SampleN
         for i in range(WindowsN):
             for j in range(SampleN):
                 RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
+                WindowSamples[j]=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
+            RDWindowMedians=statistics.median(WindowSamples)
         SampleSumAverage=0
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
@@ -230,17 +241,17 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         SampleSequenceDepthRatio=[0]*SampleN
         #SampleMedians=[0]*SampleN
         #print(SampleSumAverage, SampleSums, SampleMedians, TheContig.Name)
-        for j in range(SampleN):
-            SampleSequenceDepthRatio[j]=SampleSums[j]/SampleSumAverage if SampleSumAverage!=0 else 1
+        #for j in range(SampleN):
+        #    SampleSequenceDepthRatio[j]=SampleSums[j]/SampleSumAverage if SampleSumAverage!=0 else 1//already unified
             #SampleMedians[j]=statistics.median(RDWindows[j])
-
+        
         MixedRDRs=[]
         for i in range(SampleN):
             MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
         for i in range(SampleN):
             for j in range(WindowsN):
-                WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
-                MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
+                WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else 0
+                #MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
                 '''
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
@@ -251,7 +262,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         for i in range(SampleN):
             for j in range(WindowsN):
                 MixedRDRs[i][j]=((MixedRDRs[i][j]/MRMedians[i])*2.0) if MRMedians[i]!=0 else 0#standardization to make median 2.0
-                if RDWindowAverages[j]==0:
+                if RDWindowStandards[j]==0:
                     MixedRDRs[i][j]=2#if windows average is 0, we consider here is not valuable, so mark as normal(CN=2)
     """
     rdtestfile=open("data/rdtest.txt","a")
@@ -342,6 +353,7 @@ def readRDData(mygenome, SampleNames, FileName):
     Skip=False
     Windows=None
     ConI=0
+    ReadCount=0
     for line in DataFile:
         if line[0]=='#':
             sl=line[1:].split()
@@ -364,6 +376,8 @@ def readRDData(mygenome, SampleNames, FileName):
         #    else:
         #        raise e
         Windows[ConI]=int(line)
+        ReadCount+=Windows[ConI]
         ConI+=1
+    g.SampleReadCount.append(ReadCount)
     DataFile.close()
     return

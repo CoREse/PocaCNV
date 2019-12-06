@@ -9,3 +9,5 @@ MixedRDRs=None
 ERD=0
 SampleNames=None
 ThreadN=8
+SampleReadCount=[]
+SequenceDepthRatio=[]

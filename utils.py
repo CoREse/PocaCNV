@@ -4,6 +4,22 @@ import time
 def gettime():
     return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
 
+def calclulateSequenceDepthRatio(SequenceDepths=None):
+    if SequenceDepths==None:
+        data=g.SampleReadCount
+    else:
+        data=SequenceDepths
+    Ave=0
+    for c in data:
+        Ave+=c
+    Ave/=len(data)
+    if Ave!=0:
+        for c in data:
+            g.SequenceDepthRatio.append(c/Ave)
+    else:
+        for c in data:
+            g.SequenceDepthRatio.append(1)
+
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
         Overlap=min(E2-B1,E1-B1)

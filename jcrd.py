@@ -14,7 +14,7 @@ import psutil
 process = psutil.Process(os.getpid())
 
 WriteRDData=False
-Contigs={"chr22"}#if not vacant, contain only those contigs
+Contigs={}#if not vacant, contain only those contigs
 
 print(gettime()+"Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])
@@ -51,6 +51,7 @@ for i in range(2,len(sys.argv)):
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
         mygenome.addSample(SampleNames[-1])
+        ReadCount=0
         for read in SamFile:
             ReadCount+=1
             read: pysam.AlignedSegment
@@ -62,9 +63,12 @@ for i in range(2,len(sys.argv)):
                     if CID==-1:
                         continue
                     mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
+                    ReadCount+=1
                 else:
                     mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
+                    ReadCount+=1
         SamFile.close()
+        g.SampleReadCount.append(ReadCount)
         print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
     if WriteRDData:
         print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
@@ -73,6 +77,7 @@ for i in range(2,len(sys.argv)):
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
 globals.SampleNames=SampleNames
+calclulateSequenceDepthRatio()
 '''
 if len(RDWindows)>1:
     RDWindows.append([0]*WindowsN)#last sample is the s/"sum sample"/"average sample", because sum sample will significantly influence the WR variable
