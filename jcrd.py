@@ -14,7 +14,7 @@ import psutil
 process = psutil.Process(os.getpid())
 
 WriteRDData=False
-Contigs={}#if not vacant, contain only those contigs
+Contigs={"chr22"}#if not vacant, contain only those contigs
 
 print(gettime()+"Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])

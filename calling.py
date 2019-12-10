@@ -16,10 +16,16 @@ def getRDScore(C, TheContig):
             mu+=TheContig.RDWindowStandards[i]
         mu=int(mu)
         v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
-        qint=poisson.interval(0.999,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
+        qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
             Score+=1
+        qint=poisson.interval(0.999,mu)
+        if qint[0]<v<qint[1]:
+            Score+=0.5
         qint=poisson.interval(0.9999,mu)
+        if qint[0]<v<qint[1]:
+            Score+=0.5
+        qint=poisson.interval(0.99999,mu)
         if qint[0]<v<qint[1]:
             Score+=1
     return Score

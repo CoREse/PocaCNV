@@ -314,9 +314,16 @@ def parse_vcf(filename,contigs=None,samples=None):
                     continue
             if samples!=None:
                 try:
-                    if not record.info["SAMPLE"].upper() in includedSamples.keys():
+                    skip=True
+                    for s in record.samples:
+                        if record.samples[s].name in includedSamples.keys():
+                            if record.samples[s].allele_indices!=(0,0):
+                                skip=False
+                    if skip:
                         continue
-                except:
+                    #if not record.info["SAMPLE"].upper() in includedSamples.keys():
+                    #    continue
+                except Exception as e:
                     pass
             temp=None
             if record.info["SVTYPE"]=="INS":
@@ -346,7 +353,15 @@ def parse_my(filename,contigs=None, samples=None):
             blockend=int(sl[0].split("-")[1].split(":")[1])
             breakstart=int(sl[2].split(":")[-1])
             breakend=int(sl[3].split(":")[1].split("]")[0])
-            temp=interval(sl[0].split(":")[0],breakstart,breakend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
+            temp=interval(sl[0].split(":")[0],blockstart,blockend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
+            vsamples=sl[-1].split()
+            skip=True
+            for s in samples:
+                for v in vsamples:
+                    if s in v:
+                        skip=False
+            if skip:
+                continue
             records.append(temp)
         except:
             continue
