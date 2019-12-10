@@ -1,0 +1,2 @@
+#!/bin/bash
+cd `ls test/TestRun* -d -t|head -n 1`

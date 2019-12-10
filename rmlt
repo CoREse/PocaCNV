@@ -1,0 +1,24 @@
+#!/usr/bin/python3
+
+import subprocess
+TestDirRoot="test"
+
+run=subprocess.Popen(["ls",TestDirRoot],bufsize=1,stdout=subprocess.PIPE,universal_newlines=True)
+Runs=[]
+while True:
+    line=run.stdout.readline()
+    if line=="":
+        break
+    if len(line)<7:
+        continue
+    if line[:7]=="TestRun":
+        Runs.append(line.strip())
+run.wait()
+Runs.sort()
+ToBeRemoved=TestDirRoot+"/"+Runs[-1]
+print("%s is going to be removed?[y]/n"%(ToBeRemoved))
+Ans=input()
+if (Ans=="" or Ans.upper()=="Y"):
+    subprocess.Popen(["rm","-r",ToBeRemoved]).wait()
+    print("%s is removed."%(ToBeRemoved))
+
