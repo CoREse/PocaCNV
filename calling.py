@@ -9,6 +9,7 @@ def conditionP(O,Ei):
 
 def getRDScore(C, TheContig):
     Score=0
+    P=1
     for e in C.Evidences:
         mu=0
         length=int(e.End/globals.RDWindowSize)-int(e.Begin/globals.RDWindowSize)
@@ -17,6 +18,12 @@ def getRDScore(C, TheContig):
         mu=int(mu)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
+        mus=e.Data.AverageRD/2.0*mu
+        if getSVType(C)=="DEL":
+            P*=poisson.cdf(mus,mu)
+        else:
+            P*=1-poisson.cdf(mus,mu)
+        '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
             Score+=1
@@ -29,7 +36,8 @@ def getRDScore(C, TheContig):
         qint=poisson.interval(0.99999,mu)
         if qint[0]<v<qint[1]:
             Score+=1
-    return Score
+        '''
+    return P
 
 def getScore(C,TheContig):
     return getRDScore(C,TheContig)
@@ -114,11 +122,12 @@ def callSV(ReferenceFile,C,TheContig):
     InvolvedSamples=getInvolvedSamples(C)
     InvolvedSamples=list(InvolvedSamples)
     InvolvedSamples.sort()
-    if Score>=3:
+    if Score>0.999:
         SV+=TheContig.Name+":"+str(1+C.Begin)+"-"+TheContig.Name+":"+str(1+C.End)
         SV+=", "+SVType
         SV+=", Breakpoint:[%s,%s]"%(TheContig.Name+":"+str(1+BKL),TheContig.Name+":"+str(1+BKR))
         SV+=", Sample(s):"
         for SI in InvolvedSamples:
             SV+=" "+g.SampleNames[SI]
+        SV+=", Score:%s"%Score
     return SV
