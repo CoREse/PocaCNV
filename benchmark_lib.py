@@ -356,7 +356,7 @@ def parse_my(filename,contigs=None, samples=None):
             blockend=int(sl[0].split("-")[1].split(":")[1])
             breakstart=int(sl[2].split(":")[-1])
             breakend=int(sl[3].split(":")[1].split("]")[0])
-            temp=interval(sl[0].split(":")[0],blockstart,blockend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
+            temp=interval(sl[0].split(":")[0],breakstart,breakend,"DEL" if sl[1]=="DEL" else ("INS" if sl[1]=="INS" else "DUP"))
             vsamples=sl[-2].split()
             skip=True
             for s in samples:

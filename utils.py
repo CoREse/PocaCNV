@@ -94,7 +94,7 @@ class Candidate:
         #MinLength=min(self.End-self.Begin,other.End-other.Begin)
         if self.SVType!=other.SVType:
             return 0
-        Length=max(self.End-self.Begin,other.End-other.Begin)
+        Length=min(self.End-self.Begin,other.End-other.Begin)
         Overlap=Overlap/Length if Length!=0 else 0
         if Overlap>=Candidate.CombinePercentage:
             self.Evidences+=other.Evidences
