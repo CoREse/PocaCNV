@@ -29,7 +29,7 @@ def getRDScore(C, TheContig):
         if qint[0]<v<qint[1]:
             Score+=1
     if getSVType(C)=="DEL":
-        Score+=3
+        Score+=4
     return Score
 
 def getScore(C,TheContig):
