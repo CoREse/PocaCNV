@@ -28,6 +28,8 @@ def getRDScore(C, TheContig):
         qint=poisson.interval(0.99999,mu)
         if qint[0]<v<qint[1]:
             Score+=1
+    if getSVType(C)=="DEL":
+        Score+=3
     return Score
 
 def getScore(C,TheContig):
