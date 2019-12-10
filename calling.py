@@ -37,7 +37,7 @@ def getRDScore(C, TheContig):
         if qint[0]<v<qint[1]:
             Score+=1
         '''
-    return P
+    return 1-P
 
 def getScore(C,TheContig):
     return getRDScore(C,TheContig)
