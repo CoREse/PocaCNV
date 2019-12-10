@@ -304,7 +304,10 @@ def parse_vcf(filename,contigs=None,samples=None):
             try:
                 End=record.info["END"]
             except:
-                pass
+                try:
+                    End=record.stop
+                except:
+                    pass
         try:
             chrom=record.chrom
             #if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
