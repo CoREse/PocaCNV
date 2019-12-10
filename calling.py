@@ -3,6 +3,8 @@ import globals
 from utils import *
 import math
 from scipy.stats import poisson
+from consts import *
+import sys
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
@@ -19,10 +21,16 @@ def getRDScore(C, TheContig):
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         mus=e.Data.AverageRD/2.0*mu
-        if getSVType(C)=="DEL":
-            P*=poisson.cdf(mus,mu)
-        else:
-            P*=1-poisson.cdf(mus,mu)
+        CN=e.Data.CN
+        if CN>10:
+            CN=10
+        Pmuscn=poisson.pmf(int(mus+0.5),int(mu*CN/2))*CNPriors[CN]
+        Pmus=0
+        for i in range(len(CNPriors)):
+            Pmus+=CNPriors[i]*poisson.pmf(int(mus+0.5),int(mu*i/2))
+        Pd=Pmuscn/Pmus if Pmus!=0 else 0
+        #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
+        P*=1-Pd
         '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
