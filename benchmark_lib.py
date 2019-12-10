@@ -307,8 +307,8 @@ def parse_vcf(filename,contigs=None,samples=None):
                 pass
         try:
             chrom=record.chrom
-            if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
-                    chrom="chr"+record.chrom
+            #if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
+            #        chrom="chr"+record.chrom
             if contigs!=None:
                 if not chrom in included.keys():
                     continue
