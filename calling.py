@@ -17,7 +17,7 @@ def getRDScore(C, TheContig):
         mu=int(mu)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
-        qint=poisson.interval(0.9,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
+        qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
             Score+=1
         qint=poisson.interval(0.999,mu)
@@ -29,8 +29,6 @@ def getRDScore(C, TheContig):
         qint=poisson.interval(0.99999,mu)
         if qint[0]<v<qint[1]:
             Score+=1
-    if getSVType(C)=="DEL":
-        Score+=4
     return Score
 
 def getScore(C,TheContig):
@@ -116,7 +114,7 @@ def callSV(ReferenceFile,C,TheContig):
     InvolvedSamples=getInvolvedSamples(C)
     InvolvedSamples=list(InvolvedSamples)
     InvolvedSamples.sort()
-    if Score>3:
+    if Score>=3:
         SV+=TheContig.Name+":"+str(1+C.Begin)+"-"+TheContig.Name+":"+str(1+C.End)
         SV+=", "+SVType
         SV+=", Breakpoint:[%s,%s]"%(TheContig.Name+":"+str(1+BKL),TheContig.Name+":"+str(1+BKR))
