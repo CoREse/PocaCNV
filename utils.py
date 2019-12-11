@@ -53,6 +53,8 @@ def getTidByCord(Cordinate):
 #Candidate can have evidences from different sapmles, evidence will only be one sample's evidence
 class Candidate:
     CombinePercentage=0.9
+    CombineRange=300
+    CombineMode=0#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other
     def __init__(self,Es=[]):
         self.SVType=None#0: deletion, 1: insertion, 2:dup
         self.Evidences=Es
@@ -62,6 +64,8 @@ class Candidate:
         self.BreakRight=0xffffffff
         self.deductSVType()
         self.calculateSpread()
+        self.BeginRange=(0,0)
+        self.EndRange=(0,0)
     
     def calculateSpread(self):
         for e in self.Evidences:
@@ -73,6 +77,18 @@ class Candidate:
             if e.Type==1:
                     self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
                     self.BreakRight=min(self.BreakRight,e.Data.End)
+        if CombineMode==1:
+            self.BeginRange=(self.Begin,self.Begin)
+            self.EndRange=(self.End,self.End)
+            for e in self.Evidences:
+                if e.Type==0:
+                    for pi in e.Data:
+                        self.BeginRange=(min(self.BeginRange[0],pi.LStart),max(self.BeginRange[1],pi.LEnd))
+                        self.EndRange=(min(self.EndRange[0],pi.RStart),max(self.EndRange[1],pi.REnd))
+                if e.Type==1:
+                    self.BeginRange=(min(self.BeginRange[0],e.Data.Begin),max(self.BeginRange[1],e.Data.Begin))
+                    self.EndRange=(min(self.EndRange[0],e.Data.End),max(self.EndRange[1],e.Data.End))
+
     def deductSVType(self):
         if len(self.Evidences)!=0:
             self.SVType=self.Evidences[0].SupportedSVType
@@ -81,7 +97,7 @@ class Candidate:
         if len(Evidences)==0:
             Evidences.append(e)
             self.deductSVType()
-            self.calculateSpread
+            self.calculateSpread()
     
     def mergeCandidate(self,other):#return: 0: not combine, 1: combine, -1: not overlap
         Overlap=calcOverlap(self.Begin,self.End,other.Begin,other.End)
@@ -94,9 +110,16 @@ class Candidate:
         #MinLength=min(self.End-self.Begin,other.End-other.Begin)
         if self.SVType!=other.SVType:
             return 0
-        Length=max(self.End-self.Begin,other.End-other.Begin)
-        Overlap=Overlap/Length if Length!=0 else 0
-        if Overlap>=Candidate.CombinePercentage:
+        ToCombine=False
+        if Candidate.CombineMode==0:
+            Length=max(self.End-self.Begin,other.End-other.Begin)
+            Overlap=Overlap/Length if Length!=0 else 0
+            if Overlap>=Candidate.CombinePercentage:
+                ToCombine=True
+        else:
+            if self.BeginRange[0]>=other.BeginRange[1]-Candidate.CombineRange and self.BeginRange[1]<=other.BeginRange[0]+Candidate.CombineRange and self.EndRange[0]>=other.EndRange[1]-Candidate.CombineRange and self.EndRange[1]<=other.EndRange[0]+Candidate.CombineRange:
+                ToCombine=True
+        if ToCombine:
             self.Evidences+=other.Evidences
             self.calculateSpread()
             return 1
