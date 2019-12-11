@@ -62,10 +62,10 @@ class Candidate:
         self.End=0
         self.BreakLeft=0
         self.BreakRight=0xffffffff
-        self.deductSVType()
-        self.calculateSpread()
         self.BeginRange=(0,0)
         self.EndRange=(0,0)
+        self.deductSVType()
+        self.calculateSpread()
     
     def calculateSpread(self):
         for e in self.Evidences:
