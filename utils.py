@@ -54,7 +54,7 @@ def getTidByCord(Cordinate):
 class Candidate:
     CombinePercentage=0.9
     CombineRange=300
-    CombineMode=0#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other
+    CombineMode=1#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other
     def __init__(self,Es=[]):
         self.SVType=None#0: deletion, 1: insertion, 2:dup
         self.Evidences=Es
@@ -77,7 +77,7 @@ class Candidate:
             if e.Type==1:
                     self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
                     self.BreakRight=min(self.BreakRight,e.Data.End)
-        if CombineMode==1:
+        if Candidate.CombineMode==1:
             self.BeginRange=(self.Begin,self.Begin)
             self.EndRange=(self.End,self.End)
             for e in self.Evidences:
