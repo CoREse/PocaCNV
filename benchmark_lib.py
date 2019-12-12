@@ -333,7 +333,7 @@ def parse_vcf(filename,contigs=None,samples=None):
                 temp=interval(chrom,record.pos,record.stop+1,"INS")
             elif record.info["SVTYPE"]=="DEL":
                 temp=interval(chrom,record.pos,End,"DEL")
-            elif record.info["SVTYPE"]=="DUP":
+            elif record.info["SVTYPE"]=="DUP" or record.info["SVTYPE"]=="CNV":
                 temp=interval(chrom,record.pos,End,"DUP")
             else:
                 continue
