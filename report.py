@@ -1,12 +1,12 @@
 import globals as g
 from consts import DefaultHeader
-def reportVCF(SVs,RefFile,OutFile,ReportHeader=False):
+def reportVCF(SVs,RefSeq,OutFile,ReportHeader=False):
     if ReportHeader:
         reportVCFHeader(OutFile)
     for SV in SVs:
         ##CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
         INFO=""
-        Ref=RefFile.fetch(SV.Chrom)[SV.BreakLeft-1]
+        Ref=RefSeq[SV.BreakLeft-1]
         Alt=""
         fal=True
         for a in SV.Alleles:

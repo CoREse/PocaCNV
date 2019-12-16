@@ -140,5 +140,5 @@ for i in range(len(mygenome)):
             SV.Chrom=mygenome[i].Name
             SVs.append(SV)
     SVs.sort(key=lambda s:s.BreakLeft)
-    reportVCF(SVs,ReferenceFile,sys.stdout)
+    reportVCF(SVs,ReferenceFile.fetch(mygenome[i].Name),sys.stdout)
 ReferenceFile.close()
