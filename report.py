@@ -14,7 +14,7 @@ def reportVCF(SVs,RefSeq,OutFile,ReportHeader=False):
                 Alt+=","
             fal=False
             Alt+=a
-        INFO="SVTYPE=%s,End=%s"%(SV.Type,SV.BreakRight)
+        INFO="SVTYPE=%s;End=%s"%(SV.Type,SV.BreakRight)
         print("%s\t%s\t*\t%s\t%s\t100\tPASS\t%s\tGT"%(SV.Chrom,SV.BreakLeft,Ref,Alt,INFO),end="",file=OutFile)
         SI=0
         for i in range(len(g.SampleNames)):
