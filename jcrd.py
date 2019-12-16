@@ -134,6 +134,7 @@ print("Number of candidates:%d"%(CCount),file=sys.stderr)
 reportVCFHeader(sys.stdout)
 for i in range(len(mygenome)):
     SVs=[]
+    print(gettime()+"Calling CNV for %s"%mygenome[i].Name,file=sys.stderr)
     for C in Candidates[i]:
         SV=callSV(ReferenceFile,C,mygenome[i])
         if SV!="":
@@ -142,3 +143,4 @@ for i in range(len(mygenome)):
     SVs.sort(key=lambda s:s.BreakLeft)
     reportVCF(SVs,ReferenceFile.fetch(mygenome[i].Name),sys.stdout)
 ReferenceFile.close()
+print(gettime()+"All done.",file=sys.stderr)
