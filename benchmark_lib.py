@@ -339,7 +339,7 @@ def parse_vcf(filename,contigs=None,samples=None):
                 CNs=[]
                 for a in record.alts:
                     CNs.append(int(a[3:-1]))
-                if len(CNS)==0:
+                if len(CNs)==0:
                     continue
                 if len(CNs)>1:
                     Type="CNV"
