@@ -8,6 +8,7 @@ from readdepth import *
 from filters import *
 from contig import *
 from array import array
+from report import *
 
 import os
 import psutil
@@ -130,10 +131,14 @@ CCount=0
 for cs in Candidates:
     CCount+=len(cs)
 print("Number of candidates:%d"%(CCount),file=sys.stderr)
+reportVCFHeader(sys.stdout)
 for i in range(len(mygenome)):
+    SVs=[]
     for C in Candidates[i]:
         SV=callSV(ReferenceFile,C,mygenome[i])
         if SV!="":
-            print(SV)
-
+            SV.Chrom=mygenome[i].Name
+            SVs.append(SV)
+    SVs.sort(key=lambda s:s.BreakLeft)
+    reportVCF(SVs,ReferenceFile,sys.stdout)
 ReferenceFile.close()

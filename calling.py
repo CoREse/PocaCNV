@@ -5,6 +5,7 @@ import math
 from scipy.stats import poisson
 from consts import *
 import sys
+from variants import CNV
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
@@ -121,6 +122,48 @@ def getInvolvedSamples(C):
     return Ss
 
 def callSV(ReferenceFile,C,TheContig):
+    SV=""
+    if prefilters(C)!=True:
+        return SV
+    SVType=getSVType(C)
+    Score=getScore(C,TheContig)
+    BKL,BKR=getBreak(C)
+    InvolvedSamples=getInvolvedSamples(C)
+    InvolvedSamples=list(InvolvedSamples)
+    InvolvedSamples.sort()
+    if Score>0.999:
+        Alleles=set()
+        Samples=[]
+        Occured=set()
+        for E in C.Evidences:
+            if E.Data.CN<=1:
+                Alleles.add(0)
+            else:
+                Alleles.add(E.Data.CN-1)
+        Alleles=list(Alleles)
+        Alleles.sort()
+        for E in C.Evidences:
+            if E.Sample in Occured:
+                continue
+            Occured.add(E.Sample)
+            SA=(0,0)
+            if E.Data.CN==0:
+                SA=(1,1)
+            elif E.Data.CN==1:
+                SA=(1,0)
+            else:
+                for i in range(len(Alleles)):
+                    if E.Data.CN-1==Alleles[i]:
+                        SA=(i+1,0)
+                        break
+            Samples.append((E.Sample,SA))
+        Samples.sort(key=lambda s:s[0])
+        for i in range(len(Alleles)):
+            Alleles[i]="<CN%s>"%Alleles[i]
+        SV=CNV(BKL+1,BKR+1,False,Alleles,Samples,Score)
+    return SV
+
+def callSV_old(ReferenceFile,C,TheContig):
     SV=""
     if prefilters(C)!=True:
         return SV
