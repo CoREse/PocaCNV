@@ -16,6 +16,7 @@ TestDirRoot="test"
 
 RunDir=TestDirRoot+"/"+"TestRun"+time.strftime("%Y%m%d%H%M%S",time.localtime())
 SamplesArray=glob.glob(Samples)
+SamplesArray.sort()
 
 run=subprocess.Popen(["ls",TestDirRoot],bufsize=1,stdout=subprocess.PIPE,universal_newlines=True)
 Runs=[]
