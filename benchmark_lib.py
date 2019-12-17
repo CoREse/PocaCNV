@@ -310,6 +310,8 @@ def parse_vcf(filename,contigs=None,samples=None):
                     pass
         try:
             chrom=record.chrom
+            if samples!=None and len(samples)==1:
+                sa=None
             #if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
             #        chrom="chr"+record.chrom
             if contigs!=None:
@@ -319,8 +321,9 @@ def parse_vcf(filename,contigs=None,samples=None):
                 try:
                     skip=True
                     for s in record.samples:
-                        if record.samples[s].name in includedSamples.keys():
+                        if record.samples[s].name in includedSamples.keys() or (len(samples)==1 and samples[0] in record.samples[s].name):
                             if record.samples[s].allele_indices!=(0,0):
+                                sa=record.samples[s].allele_indices
                                 skip=False
                     if skip:
                         continue
@@ -343,6 +346,18 @@ def parse_vcf(filename,contigs=None,samples=None):
                     continue
                 if len(CNs)>1:
                     Type="CNV"
+                    if samples!=None and len(samples)==1:
+                        Al=1
+                        if sa[0]==0:
+                            Al=CNs[sa[1]]
+                        if sa[1]==0:
+                            Al=CNs[sa[0]]
+                        if sa[0]==sa[1]:
+                            Al=CNs[sa[0]]
+                        if Al==0:
+                            Type="DEL"
+                        elif Al>1:
+                            Type="DUP"
                 elif CNs[0]==0:
                     Type="DEL"
                 else:
