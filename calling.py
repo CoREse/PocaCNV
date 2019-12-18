@@ -28,19 +28,20 @@ def getRDScore(C, TheContig):
         MP=0
         MCN=0
         CNPN=len(CNPriors)-1
-        for CN in range(min(0,eCN-2),eCN+2):
+        Pmus=0
+        for i in range(CNPN):
+            Pmus+=CNPriors[i]*poisson.pmf(int(mus+0.5),int(mu*i/2))
+        for CN in range(min(0,eCN-1),eCN+1):
             if CN>CNPN:
                 CN=CNPN
             Pmuscn=poisson.pmf(int(mus+0.5),int(mu*CN/2))*CNPriors[CN]
-            Pmus=0
-            for i in range(len(CNPriors)):
-                Pmus+=CNPriors[i]*poisson.pmf(int(mus+0.5),int(mu*i/2))
             Pd=Pmuscn/Pmus if Pmus!=0 else 0
             if Pd>MP:
                 MP=Pd
                 MCN=CN
             #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
         e.Data.CN=MCN
+        e.Confidence=MP
         P*=1-MP
         '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
@@ -138,14 +139,13 @@ def callSV(ReferenceFile,C,TheContig):
     SVType=getSVType(C)
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
-    InvolvedSamples=getInvolvedSamples(C)
-    InvolvedSamples=list(InvolvedSamples)
-    InvolvedSamples.sort()
-    if Score>0.999:
+    if Score>g.ScoreThreshold:
         Alleles=set()
         Samples=[]
         Occured=set()
         for E in C.Evidences:
+            if E.Confidence<g.SampleConfidenceThreshold:
+                continue
             if E.Data.CN<=1:
                 Alleles.add(0)
             else:
@@ -153,7 +153,7 @@ def callSV(ReferenceFile,C,TheContig):
         Alleles=list(Alleles)
         Alleles.sort()
         for E in C.Evidences:
-            if E.Sample in Occured:
+            if E.Sample in Occured or E.Confidence<g.SampleConfidenceThreshold:
                 continue
             Occured.add(E.Sample)
             SA=(0,0)

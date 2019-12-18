@@ -11,3 +11,5 @@ SampleNames=None
 ThreadN=8
 SampleReadCount=[]
 SequenceDepthRatio=[]
+ScoreThreshold=0.9999
+SampleConfidenceThreshold=0.999
