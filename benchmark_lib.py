@@ -371,8 +371,8 @@ def parse_vcf(filename,contigs=None,samples=None):
     vcf.close()
     return result
 
-def parse_my(filename,contigs=None, samples=None):
-    if filename[-4:]==".vcf" or filename[-4:]==".bcf":
+def parse_my(filename,contigs=None, samples=None, format=None):
+    if format.upper()=="VCF" or filename[-4:]==".vcf" or filename[-4:]==".bcf":
         return parse_vcf(filename,contigs,samples)
     myout=open(filename,"r")
     records=[]

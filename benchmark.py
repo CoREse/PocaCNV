@@ -15,7 +15,7 @@ Samples=["HG00403"]
 GSF='/mnt/c/Users/CRE/Productive/Programming/data/delly_hs37d5_HG004xx.bcf'
 goldstandard=parse_vcf(GSF,Contigs,Samples)
 if len(sys.argv)>1:
-    myout=parse_my(sys.argv[1],Contigs,Samples)
+    myout=parse_my(sys.argv[1],Contigs,Samples,format="VCF")
 else:
     myout=parse_my("test/512-4_chr22_testcall.txt")
 print("goldstandards:")
