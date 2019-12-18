@@ -7,14 +7,14 @@ class CNV():
         self.Alleles=Alleles
         self.Samples=Samples
         self.Score=Score
-        self.SVType=""
+        self.SVType="NONE"
         self.deductSVType()
     def deductSVType(self):
         if len(self.Alleles)==0:
             return
         if len(self.Alleles)>1:
-            self.Type="CNV"
+            self.SVType="CNV"
         elif self.Alleles[0]=="<CN0>":
-            self.Type="DEL"
+            self.SVType="DEL"
         else:
-            self.Type="DUP"
+            self.SVType="DUP"

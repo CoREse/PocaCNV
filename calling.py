@@ -42,7 +42,8 @@ def getRDScore(C, TheContig):
             #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
         e.Data.CN=MCN
         e.Confidence=MP
-        P*=1-MP
+        if e.Confidence>g.SampleConfidenceThreshold:
+            P*=1-MP
         '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
@@ -144,7 +145,7 @@ def callSV(ReferenceFile,C,TheContig):
         Samples=[]
         Occured=set()
         for E in C.Evidences:
-            if E.Confidence<g.SampleConfidenceThreshold:
+            if E.Confidence<=g.SampleConfidenceThreshold:
                 continue
             if E.Data.CN<=1:
                 Alleles.add(0)
@@ -153,7 +154,7 @@ def callSV(ReferenceFile,C,TheContig):
         Alleles=list(Alleles)
         Alleles.sort()
         for E in C.Evidences:
-            if E.Sample in Occured or E.Confidence<g.SampleConfidenceThreshold:
+            if E.Sample in Occured or E.Confidence<=g.SampleConfidenceThreshold:
                 continue
             Occured.add(E.Sample)
             SA=(0,0)
