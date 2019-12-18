@@ -89,9 +89,10 @@ if len(RDWindows)>1:
         RDWindows[SumI][i]/=SumI
 '''
 
-#EAFile=open("data/exclusion_regions.txt","r")
-#readExcludedAreas(EAFile,ContigNameOccurred)
-#EAFile.close()
+#EAFile=open("data/mdust-v28-p1.bed","r")
+EAFile=open("data/exclusion_regions.txt","r")
+ExcludedAreasByContig=readExcludedAreas(EAFile,ReferenceFile)
+EAFile.close()
 '''
 if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
@@ -130,7 +131,13 @@ for c in mygenome:
 CCount=0
 for cs in Candidates:
     CCount+=len(cs)
-print("Number of candidates:%d"%(CCount),file=sys.stderr)
+print(gettime()+"Number of candidates:%d. Filtering candidates in LPR..."%CCount,file=sys.stderr)
+for i in range(len(Candidates)):
+    Candidates[i]=filtExcludedAreas(Candidates[i],ExcludedAreasByContig,mygenome[i])
+CCount=0
+for cs in Candidates:
+    CCount+=len(cs)
+print(gettime()+"Number of filtered candidates:%d. CNV calling..."%(CCount),file=sys.stderr)
 reportVCFHeader(sys.stdout)
 for i in range(len(mygenome)):
     SVs=[]

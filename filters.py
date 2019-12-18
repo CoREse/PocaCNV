@@ -3,33 +3,27 @@ from utils import *
 from readpair import PairInfo
 import globals as g
 
-ExcludedAreas=[]
-ExcludedAreasByContig={}
-def readExcludedAreas(DataFile,ContigNameOccurred=None):
-    for i in range(len(g.RefInd)):
-        ExcludedAreasByContig[i]=[]
+def readExcludedAreas(DataFile,RefFile):
+    ExcludedAreasByContig={}
+    for tid in range(RefFile.nreferences):
+        ExcludedAreasByContig[RefFile.references[tid]]=[]
     for line in DataFile:
         sl=line.split()
         if len(sl)!=4:
             continue
         Contig=sl[0]
-        try:
-            Start=int(sl[1])+RefStartPos[g.RefInd[Contig]]
-            End=int(sl[2])+RefStartPos[g.RefInd[Contig]]
-            ExcludedAreasByContig[g.RefInd[Contig]].append((Start,End))
-            if ContigNameOccurred!=None:
-                if not ContigNameOccurred[Contig]:
-                    continue
-        except:
-            continue
-        ExcludedAreas.append((Start,End))
+        Start=int(sl[1])
+        End=int(sl[2])
+        ExcludedAreasByContig[Contig].append((Start,End))
+    return ExcludedAreasByContig
         
-def filtExcludedAreas(Intervals):
+def filtExcludedAreas(Intervals,ExcludedAreasByContig,Contig):
     FilteredIntervals=[]
+    ExcludedAreas=ExcludedAreasByContig[Contig.Name]
     for Int in Intervals:
         Flag=True
         SE=getSE(Int)
-        for EA in ExcludedAreasByContig[getTidByCord((SE[0]+SE[1])/2)]:
+        for EA in ExcludedAreas:
             if inclusion(EA,getSE(Int))>0:
                 Flag=False
                 break
