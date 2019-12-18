@@ -1,7 +1,7 @@
 import pysam
 import sys
 
-NN=11
+NN=101
 CNPriors=[0]*NN
 
 for filename in sys.argv[1:]:
@@ -10,14 +10,16 @@ for filename in sys.argv[1:]:
         SVLen=0
         OccuredCN=[]
         try:
-            if record.info["SVTYPE"]=="CNV":
+            if record.info["SVTYPE"]=="CNV" or record.info["SVTYPE"]=="DEL" or record.info["SVTYPE"]=="DUP":
                 SVLen=record.rlen
                 for v in record.alts:
                     if v[:3]=="<CN":
                         CN=int(v[3:-1])
                         OccuredCN.append(CN)
+                    else:
+                        OccuredCN.append(None)
                 for i in range(len(record.info["AF"])):
-                    if OccuredCN[i]<NN:
+                    if OccuredCN[i]!=None and OccuredCN[i]<NN:
                         CNPriors[OccuredCN[i]]+=SVLen*record.info["AF"][i]
             else:
                 continue

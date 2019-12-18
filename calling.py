@@ -15,23 +15,33 @@ def getRDScore(C, TheContig):
     P=1
     for e in C.Evidences:
         mu=0
+        mus=0
         length=int(e.End/globals.RDWindowSize)-int(e.Begin/globals.RDWindowSize)
         for i in range(int(e.Begin/globals.RDWindowSize),int(e.End/globals.RDWindowSize)):
             mu+=TheContig.RDWindowStandards[i]
+            mus+=TheContig.MixedRDRs[e.Sample][i]/2.0*TheContig.RDWindowStandards[i]
         mu=int(mu)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
-        v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
-        mus=e.Data.AverageRD/2.0*mu
-        CN=e.Data.CN
-        if CN>10:
-            CN=10
-        Pmuscn=poisson.pmf(int(mus+0.5),int(mu*CN/2))*CNPriors[CN]
-        Pmus=0
-        for i in range(len(CNPriors)):
-            Pmus+=CNPriors[i]*poisson.pmf(int(mus+0.5),int(mu*i/2))
-        Pd=Pmuscn/Pmus if Pmus!=0 else 0
-        #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
-        P*=1-Pd
+        #v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
+        #mus=e.Data.AverageRD/2.0*mu
+        eCN=e.Data.CN
+        MP=0
+        MCN=0
+        CNPN=len(CNPriors)-1
+        for CN in range(min(0,eCN-2),eCN+2):
+            if CN>CNPN:
+                CN=CNPN
+            Pmuscn=poisson.pmf(int(mus+0.5),int(mu*CN/2))*CNPriors[CN]
+            Pmus=0
+            for i in range(len(CNPriors)):
+                Pmus+=CNPriors[i]*poisson.pmf(int(mus+0.5),int(mu*i/2))
+            Pd=Pmuscn/Pmus if Pmus!=0 else 0
+            if Pd>MP:
+                MP=Pd
+                MCN=CN
+            #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
+        e.Data.CN=MCN
+        P*=1-MP
         '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:

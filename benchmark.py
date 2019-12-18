@@ -11,7 +11,8 @@ Samples=["HG00403"]
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/ALL_Illumina_Integrate_20170206.vcf.gz'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/delly.bcf'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/nstd152.GRCh38.variant_call.vcf.gz'
-GSF='/mnt/c/Users/CRE/Productive/Programming/data/chr22_indels_HG00403.recode.vcf'
+#GSF='/mnt/c/Users/CRE/Productive/Programming/data/chr22_indels_HG00403.recode.vcf'
+GSF='/mnt/c/Users/CRE/Productive/Programming/data/delly_hs37d5_HG004xx.bcf'
 goldstandard=parse_vcf(GSF,Contigs,Samples)
 if len(sys.argv)>1:
     myout=parse_my(sys.argv[1],Contigs,Samples)
