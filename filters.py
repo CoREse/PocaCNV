@@ -9,7 +9,7 @@ def readExcludedAreas(DataFile,RefFile):
         ExcludedAreasByContig[RefFile.references[tid]]=[]
     for line in DataFile:
         sl=line.split()
-        if len(sl)!=4:
+        if len(sl)<3:
             continue
         Contig=sl[0]
         Start=int(sl[1])
