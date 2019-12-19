@@ -9,6 +9,7 @@ from filters import *
 from contig import *
 from array import array
 from report import *
+from joint import uniformlyCombine
 
 import os
 import psutil
@@ -137,7 +138,13 @@ for i in range(len(Candidates)):
 CCount=0
 for cs in Candidates:
     CCount+=len(cs)
-print(gettime()+"Number of filtered candidates:%d. CNV calling..."%(CCount),file=sys.stderr)
+print(gettime()+"Number of filtered candidates:%d. Uniformly combining..."%(CCount),file=sys.stderr)
+for i in range(len(Candidates)):
+    Candidates[i]=uniformlyCombine(Candidates[i],mygenome[i])
+CCount=0
+for cs in Candidates:
+    CCount+=len(cs)
+print(gettime()+"Number of uniformly combined candidates:%d. CNV calling..."%(CCount),file=sys.stderr)
 reportVCFHeader(sys.stdout)
 for i in range(len(mygenome)):
     SVs=[]
