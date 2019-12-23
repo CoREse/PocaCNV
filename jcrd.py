@@ -17,6 +17,9 @@ process = psutil.Process(os.getpid())
 
 WriteRDData=False
 Contigs={"chr22"}#if not vacant, contain only those contigs
+ExcludeRegionsFileName=None
+#ExcludeRegionsFileName="data/mdust-v28-p1.bed"
+#ExcludeRegionsFileName="data/exclusion_regions.txt"
 
 print(gettime()+"Joint calling started...", file=sys.stderr)
 ReferenceFile=pysam.FastaFile(sys.argv[1])
@@ -90,10 +93,10 @@ if len(RDWindows)>1:
         RDWindows[SumI][i]/=SumI
 '''
 
-#EAFile=open("data/mdust-v28-p1.bed","r")
-EAFile=open("data/exclusion_regions.txt","r")
-ExcludedAreasByContig=readExcludedAreas(EAFile,ReferenceFile)
-EAFile.close()
+if ExcludeRegionsFileName!=None:
+    EAFile=open(ExcludeRegionsFileName,"r")
+    ExcludedAreasByContig=readExcludedAreas(EAFile,ReferenceFile)
+    EAFile.close()
 '''
 if WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
@@ -133,8 +136,9 @@ CCount=0
 for cs in Candidates:
     CCount+=len(cs)
 print(gettime()+"Number of candidates:%d. Filtering candidates in LPR..."%CCount,file=sys.stderr)
-for i in range(len(Candidates)):
-    Candidates[i]=filtExcludedAreas(Candidates[i],ExcludedAreasByContig,mygenome[i])
+if ExcludeRegionsFileName!=None:
+    for i in range(len(Candidates)):
+        Candidates[i]=filtExcludedAreas(Candidates[i],ExcludedAreasByContig,mygenome[i])
 CCount=0
 for cs in Candidates:
     CCount+=len(cs)
