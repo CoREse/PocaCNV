@@ -2,6 +2,28 @@ import pysam
 
 import sys
 
+def calcOverlap(B1,E1,B2,E2):
+    if B1<=E2 and B1>=B2:
+        Overlap=min(E2-B1,E1-B1)
+    elif E1>=B2 and E1<=B2:
+        Overlap=E1-B2
+    elif B2>=B1 and B2<=E1:#1 covers 2
+        Overlap=E2-B2
+    else:
+        Overlap=-1
+    return Overlap
+
+def inclusion(In1,In2):#return 0: not overlapped, 1: overlapped, 2: In1 include In2, 3: In2 inlcude In1, 4: identical
+    if In1==In2:
+        return 4
+    elif In1[0]>=In2[0] and In1[1]<=In2[1]:
+        return 3
+    elif In1[0]<=In2[0] and In1[1]>=In2[1]:
+        return 2
+    elif In1[0]>=In2[0] and In1[0]<=In2[1] or In1[1]>=In2[0] and In1[1]<=In2[1]:
+        return 1
+    return 0
+
 class interval:
     
     def __init__(self, chrom, start, end, type):  
@@ -11,7 +33,7 @@ class interval:
         self.type = type
     
     def __str__(self):
-        return "%s:%s-%s,%s"%(self.chrom,self.start,self.end,self.type)
+        return "%s:%s-%s,%s,%s"%(self.chrom,self.start,self.end,self.end-self.start,self.type)
 
     def get_chrom(self):
         return self.chrom
@@ -135,6 +157,30 @@ def parse_cnvnator(input_file, min_length=0, max_length=sys.maxsize):
     f.close()
     return records
 
+class Match:
+    def __init__(self,Type=0,gs=None,Target=None):#Type:0:percent or near; 1:inclusion
+        self.Type=Type
+        self.gs=gs
+        self.Target=Target
+        self.gsp=0
+        self.tgp=0
+        self.analyze()
+
+    def addGS(self,gs):
+        self.gs=gs
+        self.analyze()
+    def addTarget(self,Target):
+        self.Target=Target
+        self.analyze()
+    def analyze(self):
+        if self.gs==None or self.Target==None:
+            return
+        Over=calcOverlap(self.gs.start,self.gs.end,self.Target.start,self.Target.end)
+        self.gsp=Over/(self.gs.end-self.gs.start)
+        self.tgp=Over/(self.Target.end-self.Target.start)
+    def __str__(self):
+        return "gs:%s,tg:%s,gsp:%d%%,tgp:%d%%"%(self.gs,self.Target,self.gsp*100,self.tgp*100)+(", gs included by tg"if self.gsp>=1 else "")+(", tg included by gs"if self.tgp>=1 else"")
+
             
 def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,printmatch=False):
     count = 0
@@ -144,6 +190,7 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
     gaintotal=0
     losstotal=0
     instotal=0
+    results=[]
     for interval1 in goldstandard:
         if interval1.type=="DUP":
             gaintotal+=1
@@ -157,6 +204,7 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
                 continue
             if interval1.is_overlap_by_percent_or_near(interval2, percent,near):
                 tag = True
+                results.append(Match(0,interval1,interval2))
         if tag == True:
             if printmatch:
                 print(interval1)
@@ -171,7 +219,8 @@ def calculate_sensitivity_by_percent(goldstandard, callset, percent,near=-1,prin
     print('Sensitivity: All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard))) if len(goldstandard)!=0 else "N/A",\
         gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
-                inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
+                inscount/instotal if instotal!=0 else "N/A",inscount,instotal))      
+    return results
 
 def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch=False):
     count = 0
@@ -181,6 +230,7 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
     gaintotal=0
     losstotal=0
     instotal=0
+    results=[]
     for interval1 in callset:
         if interval1.type=="DUP":
             gaintotal+=1
@@ -194,6 +244,7 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
                 continue
             if interval1.is_overlap_by_percent_or_near(interval2, percent,near):
                 tag = True
+                results.append(Match(0,interval2,interval1))
         if tag == True:
             if printmatch:
                 print(interval1)
@@ -209,6 +260,7 @@ def calculate_fdr_by_percent(goldstandard, callset, percent, near=-1, printmatch
         %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
+    return results
 
 ##consider caught if callset fully include goldstandard
 def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
@@ -219,6 +271,7 @@ def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
     gaintotal=0
     losstotal=0
     instotal=0
+    results=[]
     for interval1 in goldstandard:
         if interval1.type=="DUP":
             gaintotal+=1
@@ -230,7 +283,8 @@ def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
         for interval2 in callset:
             if interval1.type!=interval2.type:
                 continue
-            if interval1.is_included_by(interval2):
+            if interval1.is_included_by(interval2) or interval2.is_included_by(interval1):
+                results.append(Match(1,interval1,interval2))
                 tag = True
         if tag == True:
             if printmatch:
@@ -246,7 +300,8 @@ def calculate_sensitivity_by_inclusion(goldstandard, callset, printmatch=False):
     print('Sensitivity: All:%s, Dup:%s(%s/%s), Del:%s(%s/%s), Ins:%s(%s/%s)' %(str(float(count) / float(len(goldstandard)))if len(goldstandard)!=0 else "N/A",\
         gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
-                inscount/instotal if instotal!=0 else "N/A",inscount,instotal))        
+                inscount/instotal if instotal!=0 else "N/A",inscount,instotal))   
+    return results
 
 def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
     count = 0
@@ -256,6 +311,7 @@ def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
     gaintotal=0
     losstotal=0
     instotal=0
+    results=[]
     for interval1 in callset:
         if interval1.type=="DUP":
             gaintotal+=1
@@ -267,8 +323,9 @@ def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
         for interval2 in goldstandard:
             if interval1.type!=interval2.type:
                 continue
-            if interval2.is_included_by(interval1):
+            if interval2.is_included_by(interval1) or interval1.is_included_by(interval2):
                 tag = True
+                results.append(Match(1,interval2,interval1))
         if tag == True:
             if printmatch:
                 print(interval1)
@@ -284,6 +341,7 @@ def calculate_fdr_by_inclusion(goldstandard, callset, printmatch=False):
         %(str(1-float(count) / float(len(callset))) if len(callset)!=0 else "N/A",1-gaincount/gaintotal if gaintotal !=0 else "N/A",gaincount,gaintotal,\
             1-losscount/losstotal if losstotal!=0 else "N/A",losscount,losstotal,\
                 1-inscount/instotal if instotal!=0 else "N/A",inscount,instotal))
+    return results
 
 def parse_vcf(filename,contigs=None,samples=None):
     vcf=pysam.VariantFile(filename,"r")
@@ -320,17 +378,19 @@ def parse_vcf(filename,contigs=None,samples=None):
             if samples!=None:
                 try:
                     skip=True
-                    for s in record.samples:
-                        if record.samples[s].name in includedSamples.keys() or (len(samples)==1 and samples[0] in record.samples[s].name):
-                            if record.samples[s].allele_indices!=(0,0):
-                                sa=record.samples[s].allele_indices
-                                skip=False
-                    if skip:
-                        continue
-                    #if not record.info["SAMPLE"].upper() in includedSamples.keys():
-                    #    continue
+                    if len(record.samples)!=0:
+                        for s in record.samples:
+                            if record.samples[s].name in includedSamples.keys() or (len(samples)==1 and samples[0] in record.samples[s].name):
+                                if record.samples[s].allele_indices!=(0,0):
+                                    sa=record.samples[s].allele_indices
+                                    skip=False
+                        if skip:
+                            continue
+                    else:
+                        if not (record.info["SAMPLE"].upper() in includedSamples.keys() or (len(samples)==1 and samples[0] in record.info["SAMPLE"])):
+                            continue
                 except Exception as e:
-                    pass
+                    continue
             temp=None
             if record.info["SVTYPE"]=="INS":
                 temp=interval(chrom,record.pos,record.stop+1,"INS")
@@ -341,7 +401,10 @@ def parse_vcf(filename,contigs=None,samples=None):
             elif record.info["SVTYPE"]=="CNV":
                 CNs=[]
                 for a in record.alts:
-                    CNs.append(int(a[3:-1]))
+                    if "<CN" in a:
+                        CNs.append(int(a[a.find("<CN")+3:-1]))
+                    else:
+                        CNs.append(1)
                 if len(CNs)==0:
                     continue
                 if len(CNs)>1:
