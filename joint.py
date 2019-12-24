@@ -77,8 +77,8 @@ class CandidateCluster:
                 for i in range(WBegin,WEnd):
                     Ave+=MixedRDRs[Sample][i]
                 Ave/=WEnd-WBegin
-                Interval=RDInterval(Sample,WBegin,WEnd,Ave)
-                if Interval.CN!=2:
+                Interval=RDInterval(Sample,WBegin,WEnd,Ave,self.Contig)
+                if cn2filter(Interval,self.Contig):
                     e=Evidence()
                     e.setData(1,Interval)
                     Evidences.append(e)

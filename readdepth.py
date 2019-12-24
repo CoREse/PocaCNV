@@ -6,9 +6,20 @@ import statistics
 from array import array
 import rpy2.robjects as robjects
 from multiprocessing import Manager,Pool
+from scipy.stats import poisson
+
+def cn2filter(Interval,TheContig):
+    if Interval.mu==None:
+        mu,mus=Interval.calcMuMus(TheContig)
+    else:
+        mu,mus=(Interval.mu,Interval.mus)
+    qint=poisson.interval(0.999,mu)
+    if qint[0]<mus<qint[1]:
+        return False
+    return True
 
 class RDInterval:
-    def __init__(self,Sample,WBegin,WEnd,ARD):
+    def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None):
         self.WBegin=WBegin
         self.WEnd=WEnd
         self.AverageRD=ARD
@@ -16,6 +27,9 @@ class RDInterval:
         self.End=WEnd*g.RDWindowSize
         self.Sample=Sample
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
+        self.mu=None
+        self.mus=None
+        self.TheContig=TheContig
         if 1.8<self.AverageRD<2.2:
             self.CN=2
         elif 1.5<=self.AverageRD<=1.8:
@@ -28,6 +42,24 @@ class RDInterval:
             self.SupportedSVType=0
         elif self.CN>2:
             self.SupportedSVType=2
+    def setContig(TheContig):
+        self.TheContig=TheContig
+    def calcMuMus(self,TheContig=None):
+        if TheContig==None:
+            TheContig=self.TheContig
+        if TheContig==None:
+            raise Exception("No contig given.")
+        length=self.WEnd-self.WBegin
+        mu=0
+        mus=0
+        for i in range(self.WBegin,self.WEnd):
+            mu+=TheContig.RDWindowStandards[i]
+            mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*TheContig.RDWindowStandards[i]
+        mu=int(mu+0.5)
+        mus=int(mus+0.5)
+        self.mu=mu
+        self.mus=mus
+        return mu,mus
 
 def sigDiff(RDRs,i,CurrentRunRatio):
     DupLine=1.4

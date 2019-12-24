@@ -32,7 +32,7 @@ fasttest:
 	time python3 jc.py ~/data/hg38.fa ~/data/51*_ch1_2M.bam > test/fasttest.txt
 
 qtest:
-	time python3 jc.py ~/data/hg38.fa ~/data/512_ch1_2M.bam > test/qtest.txt
+	time python3 jcrd.py ~/data/hg38.fa ~/data/512_ch1_2M.bam > test/qtest.txt
 
 bench:
 	python3 benchmark.py

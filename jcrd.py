@@ -37,7 +37,7 @@ for tid in range(ReferenceFile.nreferences):
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
-print(gettime()+"Reference%s read. Length:%s, Contigs:%s."%(sys.argv[1],PosCount,len(mygenome)),file=sys.stderr)
+print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(sys.argv[1],PosCount,len(mygenome)),file=sys.stderr)
 print(gettime()+"Reading samples...",file=sys.stderr)
 SampleIndex=0
 
