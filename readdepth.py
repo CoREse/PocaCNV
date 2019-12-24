@@ -7,12 +7,14 @@ from array import array
 import rpy2.robjects as robjects
 from scipy.stats import poisson
 
-def cn2filter(Interval,TheContig):
+def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
         mu,mus=Interval.calcMuMus(TheContig)
     else:
         mu,mus=(Interval.mu,Interval.mus)
-    qint=poisson.interval(0.999,mu)
+    if Confidence==None:
+        Confidence=g.CN2FilterConfidence
+    qint=poisson.interval(Confidence,mu)
     if qint[0]<mus<qint[1]:
         return False
     return True

@@ -25,7 +25,6 @@ if ThreadN!=1:
     globals.Manager=Manager()
     g.Processes.append(psutil.Process(g.Manager._process.ident))
     Pids=g.Pool.map(getPid,range(g.ThreadN))
-    print(Pids)
     for pid in Pids:
         g.Processes.append(psutil.Process(pid))
 
