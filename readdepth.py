@@ -331,19 +331,9 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     return RDICandidates
 
 import pysam
-def writeRDData(mygenome,ReferenceFile,SampleNames):
-    ReferenceFile:pysam.FastaFile
+def writeRDData(mygenome,SampleNames):
     for i in range(len(SampleNames)):
-        rdfile=open("data/rd%s.rdf"%(SampleNames[i]),"w")
-        first=True
-        for c in mygenome.Contigs:
-            if not first:
-                print("\n",end="",file=rdfile)
-            first=False
-            print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
-            for j in range(len(c.RDWindows[i])):
-                print("\n%s"%(c.RDWindows[i][j]),end="",file=rdfile)
-        rdfile.close()
+        writeSampleRDData(mygenome,SampleNames[i],i)
     return
 
 def writeSampleRDData(mygenome, SampleName, SampleI):
@@ -355,7 +345,7 @@ def writeSampleRDData(mygenome, SampleName, SampleI):
         first=False
         print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
         for j in range(len(c.RDWindows[SampleI])):
-            print("\n%s"%(c.RDWindows[SampleI][j]),end="",file=rdfile)
+            print("\n%d"%(c.RDWindows[SampleI][j]),end="",file=rdfile)
     rdfile.close()
     return
 
@@ -409,7 +399,7 @@ def readRDData(mygenome, SampleNames, FileName):
         #        print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
         #    else:
         #        raise e
-        Windows[ConI]=int(line)
+        Windows[ConI]=float(line)
         ReadCount+=Windows[ConI]
         ConI+=1
     g.SampleReadCount.append(ReadCount)
