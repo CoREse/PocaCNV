@@ -96,9 +96,10 @@ def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiproces
         manager=g.Manager
         pool=g.Pool
         args=[]
+        MMixedRDRs=manager.list(MixedRDRs)
         for i in range(len(MixedRDRs)):
             Intervals[i]=manager.list()
-            args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
+            args.append((MMixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
         pool.starmap(makeSampleRDIntervals,args)
     return Intervals
 
