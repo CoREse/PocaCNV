@@ -16,9 +16,26 @@ import psutil
 from multiprocessing import Manager,Pool
 process = psutil.Process(os.getpid())
 
+g=globals
+g.Processes.append(process)
+def getPid(i):
+    return os.getpid()
 if ThreadN!=1:
     globals.Pool=Pool(globals.ThreadN)
     globals.Manager=Manager()
+    g.Processes.append(psutil.Process(g.Manager._process.ident))
+    Pids=g.Pool.map(getPid,range(g.ThreadN))
+    print(Pids)
+    for pid in Pids:
+        g.Processes.append(psutil.Process(pid))
+
+def getMemUsage():
+    vms=0
+    rss=0
+    for p in g.Processes:
+        rss+=p.memory_info().rss
+        vms+=p.memory_info().rss
+    return "Memroy usage:%.5sgb(rss),%.5sgb(vms)."%(rss/1024/1024/1024,vms/1024/1024/1024)
 
 WriteRDData=False
 Contigs={"chr22"}#if not vacant, contain only those contigs
@@ -57,7 +74,7 @@ for i in range(2,len(sys.argv)):
     if sys.argv[i].split(".")[-1]=="rdf":
         readRDData(mygenome,SampleNames,sys.argv[i])
         #OccurredWindowsN=len(RDWindows[0])
-        print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+        print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
     else:
         SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
         SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
@@ -80,7 +97,7 @@ for i in range(2,len(sys.argv)):
                     ReadCount+=1
         SamFile.close()
         g.SampleReadCount.append(ReadCount)
-        print(gettime()+"Sample %s read. Memory usage:%.6sgb."%(SampleNames[-1],process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+        print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
     if WriteRDData:
         print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
         writeSampleRDData(mygenome,SampleNames[-1],SampleIndex)
@@ -109,7 +126,7 @@ if WriteRDData:
     exit(0)
 '''
 
-print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+print("%s"%(getMemUsage()),file=sys.stderr)
 print(gettime()+"Samples read, calculating RD data...", file=sys.stderr)
 
 #for c in mygenome:
@@ -125,9 +142,9 @@ for c in mygenome:
     c.RDICandidates=analyzeRD(c.RDWindows,c.Length,c)
     #c.RDICandidates=filtExcludedAreas(c.RDICandidates)
     RDICandidates.append(c.RDICandidates)
-    print(gettime()+"%s analyzed. Memory usage: %.6sgb"%(c.Name, process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+    print(gettime()+"%s analyzed. %s"%(c.Name, getMemUsage()),file=sys.stderr)
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
-print("Memory usage: %.6sgb"%(process.memory_info().vms/1024/1024/1024),file=sys.stderr)
+print("%s"%(getMemUsage()),file=sys.stderr)
 
 Candidates=RDICandidates
 """

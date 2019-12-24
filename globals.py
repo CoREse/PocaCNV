@@ -10,6 +10,7 @@ ERD=0
 SampleNames=None
 ThreadN=8
 Pool=None
+Processes=[]
 Manager=None
 SampleReadCount=[]
 SequenceDepthRatio=[]
