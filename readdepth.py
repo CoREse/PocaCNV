@@ -6,6 +6,7 @@ import statistics
 from array import array
 import rpy2.robjects as robjects
 from scipy.stats import poisson
+import gc
 
 def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
@@ -82,6 +83,7 @@ def sigDiff(RDRs,i,CurrentRunRatio):
 
 def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
+    gc.collect()
     CutOffs=segmentation(SampleMRDRs)
     Last=0
     for End,Ave in CutOffs:
