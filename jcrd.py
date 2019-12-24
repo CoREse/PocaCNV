@@ -13,7 +13,12 @@ from joint import uniformlyCombine
 
 import os
 import psutil
+from multiprocessing import Manager,Pool
 process = psutil.Process(os.getpid())
+
+if ThreadN!=1:
+    globals.Pool=Pool(globals.ThreadN)
+    globals.Manager=Manager()
 
 WriteRDData=False
 Contigs={"chr22"}#if not vacant, contain only those contigs

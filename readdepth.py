@@ -5,7 +5,6 @@ from contig import *
 import statistics
 from array import array
 import rpy2.robjects as robjects
-from multiprocessing import Manager,Pool
 from scipy.stats import poisson
 
 def cn2filter(Interval,TheContig):
@@ -79,8 +78,8 @@ def sigDiff(RDRs,i,CurrentRunRatio):
             return True
     return False
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals):
-    print(gettime()+"segmenting %s..."%g.SampleNames[SampleI],file=sys.stderr)
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,SampleName):
+    print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     CutOffs=segmentation(SampleMRDRs)
     Last=0
     for End,Ave in CutOffs:
@@ -94,12 +93,12 @@ def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiproces
             Intervals[i]=[]
             makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
     else:
-        manager=Manager()
-        pool=Pool(g.ThreadN)
+        manager=g.Manager
+        pool=g.Pool
         args=[]
         for i in range(len(MixedRDRs)):
             Intervals[i]=manager.list()
-            args.append((MixedRDRs[i],i,Intervals[i]))
+            args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
         pool.starmap(makeSampleRDIntervals,args)
     return Intervals
 
