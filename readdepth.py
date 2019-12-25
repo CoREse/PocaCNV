@@ -14,7 +14,7 @@ def cn2filter(Interval,TheContig,Confidence=None):
     else:
         mu,mus=(Interval.mu,Interval.mus)
     if Confidence==None:
-        Confidence=g.CN2FilterConfidence
+        Confidence=g.Parameters.CN2FilterConfidence
     qint=poisson.interval(Confidence,mu)
     if qint[0]<mus<qint[1]:
         return False

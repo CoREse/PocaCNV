@@ -20,7 +20,7 @@ g=globals
 g.Processes.append(process)
 def getPid(i):
     return os.getpid()
-if ThreadN!=1:
+if globals.ThreadN!=1:
     globals.Pool=Pool(globals.ThreadN)
     globals.Manager=Manager()
     g.Processes.append(psutil.Process(g.Manager._process.ident))
@@ -44,7 +44,8 @@ ExcludeRegionsFileName=None
 
 print(gettime()+"Joint calling started...", file=sys.stderr)
 print(gettime()+"Reading reference...",file=sys.stderr)
-ReferenceFile=pysam.FastaFile(sys.argv[1])
+g.ReferencePath=sys.argv[1]
+ReferenceFile=pysam.FastaFile(g.ReferencePath)
 PosCount=0
 mygenome=Genome(ReferenceFile.filename)
 for tid in range(ReferenceFile.nreferences):
@@ -171,7 +172,7 @@ CCount=0
 for cs in Candidates:
     CCount+=len(cs)
 print(gettime()+"Number of uniformly combined candidates:%d. CNV calling..."%(CCount),file=sys.stderr)
-reportVCFHeader(sys.stdout)
+reportVCFHeader(sys.stdout,mygenome)
 for i in range(len(mygenome)):
     SVs=[]
     print(gettime()+"Calling CNV for %s"%mygenome[i].Name,file=sys.stderr)

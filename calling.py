@@ -144,14 +144,14 @@ def callSV(ReferenceFile,C,TheContig):
     SVType=getSVType(C)
     Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
-    if Score>g.ScoreThreshold:
+    if Score>g.Parameters.ScoreThreshold:
         Alleles=set()
         Samples=[]
         Occured=set()
         for E in C.Evidences:
-            if E.Confidence<=g.SampleConfidenceThreshold:
+            if E.Confidence<=g.Parameters.SampleConfidenceThreshold:
                 continue
-            if E.PassConfidence<g.CN2FilterConfidence:
+            if E.PassConfidence<g.Parameters.CN2FilterConfidence:
                 continue
             if E.Data.CN==2:
                 continue
@@ -164,7 +164,7 @@ def callSV(ReferenceFile,C,TheContig):
             return SV
         Alleles.sort()
         for E in C.Evidences:
-            if E.Sample in Occured or E.Confidence<=g.SampleConfidenceThreshold:
+            if E.Sample in Occured or E.Confidence<=g.Parameters.SampleConfidenceThreshold:
                 continue
             Occured.add(E.Sample)
             SA=(0,0)
