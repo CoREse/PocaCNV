@@ -59,7 +59,7 @@ class Candidate:
     MaxRange=10000
     CombineMode=2#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other, 2: like one, but with flexible CombineRange due to length
     def __init__(self,Es=[]):
-        self.SVType=None#0: deletion, 1: insertion, 2:dup
+        self.SVType=None#0: deletion, 1: insertion, 2:dup, 3:CNV
         self.Evidences=Es
         self.Begin=0xffffffff
         self.End=0
@@ -95,7 +95,7 @@ class Candidate:
 
     def deductSVType(self):
         if len(self.Evidences)!=0:
-            self.SVType=self.Evidences[0].SupportedSVType
+            self.SVType=3#self.Evidences[0].SupportedSVType
 
     def addEvidence(self,e):
         if len(Evidences)==0:
@@ -112,8 +112,6 @@ class Candidate:
         if calcOverlap(self.BreakLeft,self.BreakRight,other.BreakLeft,other.BreakRight)==-1:
             return 0
         #MinLength=min(self.End-self.Begin,other.End-other.Begin)
-        if self.SVType!=other.SVType:
-            return 0
         ToCombine=False
         if Candidate.CombineMode==0:
             Length=max(self.End-self.Begin,other.End-other.Begin)
