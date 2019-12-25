@@ -54,7 +54,10 @@ def getTidByCord(Cordinate):
 class Candidate:
     CombinePercentage=0.9
     CombineRange=300
-    CombineMode=1#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other
+    RangePercentage=0.1
+    MinRange=100
+    MaxRange=10000
+    CombineMode=2#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other, 2: like one, but with flexible CombineRange due to length
     def __init__(self,Es=[]):
         self.SVType=None#0: deletion, 1: insertion, 2:dup
         self.Evidences=Es
@@ -66,6 +69,7 @@ class Candidate:
         self.EndRange=(0,0)
         self.deductSVType()
         self.calculateSpread()
+        self.CombineRange=None
     
     def calculateSpread(self):
         for e in self.Evidences:
@@ -77,7 +81,7 @@ class Candidate:
             if e.Type==1:
                     self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
                     self.BreakRight=min(self.BreakRight,e.Data.End)
-        if Candidate.CombineMode==1:
+        if Candidate.CombineMode==1 or Candidate.CombineMode==2:
             self.BeginRange=(self.Begin,self.Begin)
             self.EndRange=(self.End,self.End)
             for e in self.Evidences:
@@ -117,7 +121,14 @@ class Candidate:
             if Overlap>=Candidate.CombinePercentage:
                 ToCombine=True
         else:
-            if self.BeginRange[0]>=other.BeginRange[1]-Candidate.CombineRange and self.BeginRange[1]<=other.BeginRange[0]+Candidate.CombineRange and self.EndRange[0]>=other.EndRange[1]-Candidate.CombineRange and self.EndRange[1]<=other.EndRange[0]+Candidate.CombineRange:
+            if Candidate.CombineMode==1:
+                CombineRange=Candidate.CombineRange
+            else:
+                if self.CombineRange==None:
+                    self.CombineRange=min(int((self.End-self.Begin)*Candidate.RangePercentage),Candidate.MaxRange)
+                    self.CombineRange=max(Candidate.MinRange,self.CombineRange)
+                CombineRange=self.CombineRange
+            if self.BeginRange[0]>=other.BeginRange[1]-CombineRange and self.BeginRange[1]<=other.BeginRange[0]+CombineRange and self.EndRange[0]>=other.EndRange[1]-CombineRange and self.EndRange[1]<=other.EndRange[0]+CombineRange:
                 ToCombine=True
         if ToCombine:
             self.Evidences+=other.Evidences
