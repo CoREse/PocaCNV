@@ -151,8 +151,6 @@ def callSV(ReferenceFile,C,TheContig):
         for E in C.Evidences:
             if E.Confidence<=g.Parameters.SampleConfidenceThreshold:
                 continue
-            if E.PassConfidence<g.Parameters.CN2FilterConfidence:
-                continue
             if E.Data.CN==2:
                 continue
             if E.Data.CN<=1:
