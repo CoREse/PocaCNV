@@ -20,6 +20,14 @@ def cn2filter(Interval,TheContig,Confidence=None):
         return False
     return True
 
+def cn2likely(Interval,TheContig):
+    if Interval.mu==None:
+        mu,mus=Interval.calcMuMus(TheContig)
+    else:
+        mu,mus=(Interval.mu,Interval.mus)
+    cd=poisson.cdf(mus,mu)
+    return min(cd,1-cd)
+
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None):
         self.WBegin=WBegin

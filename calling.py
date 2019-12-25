@@ -6,7 +6,7 @@ from scipy.stats import poisson
 from consts import *
 import sys
 from variants import CNV
-from readdepth import cn2filter
+from readdepth import cn2likely
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
@@ -14,6 +14,7 @@ def conditionP(O,Ei):
 def getRDScore(C, TheContig):
     Score=0
     P=1
+    CN2L=1
     for e in C.Evidences:
         e.PassConfidence=0
         mu=0
@@ -22,12 +23,8 @@ def getRDScore(C, TheContig):
             mu,mus=e.Data.calcMuMus(TheContig)
         else:
             mu,mus=(e.Data.mu,e.Data.mus)
-        if cn2filter(e.Data,TheContig,globals.CN2FilterConfidence):
-            Score+=1
-            e.PassConfidence=globals.CN2FilterConfidence
-        if cn2filter(e.Data,TheContig,0.9999):
-            Score+=1
-            e.PassConfidence=0.9999
+        e.PassConfidence=1-cn2likely(e.Data,TheContig)
+        CN2L*=1-e.PassConfidence
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #mus=e.Data.AverageRD/2.0*mu
@@ -65,7 +62,7 @@ def getRDScore(C, TheContig):
         if qint[0]<v<qint[1]:
             Score+=1
         '''
-    return Score
+    return 1-CN2L
 
 def getScore(C,TheContig):
     return getRDScore(C,TheContig)

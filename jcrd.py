@@ -165,8 +165,8 @@ CCount=0
 for cs in Candidates:
     CCount+=len(cs)
 print(gettime()+"Number of filtered candidates:%d. Uniformly combining..."%(CCount),file=sys.stderr)
-for i in range(len(Candidates)):
-    Candidates[i]=uniformlyCombine(Candidates[i],mygenome[i])
+#for i in range(len(Candidates)):
+#    Candidates[i]=uniformlyCombine(Candidates[i],mygenome[i])
 CCount=0
 for cs in Candidates:
     CCount+=len(cs)
