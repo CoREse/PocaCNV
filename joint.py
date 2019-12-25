@@ -58,15 +58,14 @@ class CandidateCluster:
     def makeNew(self):
         BeginEdge=[]
         EndEdge=[]
-        '''
         for C in self.Candidates:
             if C.Begin-self.Begin<=CandidateCluster.ClusterSideDistance:
                 BeginEdge.append(C.Begin)
             if self.End-C.End<=CandidateCluster.ClusterSideDistance:
-                EndEdge.append(C.End)'''
-        for C in self.Candidates:
+                EndEdge.append(C.End)
+        '''for C in self.Candidates:
             BeginEdge.append(C.Begin)
-            EndEdge.append(C.End)
+            EndEdge.append(C.End)'''
         WBegin=int(statistics.median(BeginEdge)/g.RDWindowSize)
         WEnd=int(statistics.median(EndEdge)/g.RDWindowSize)
         MixedRDRs=self.Contig.MixedRDRs
