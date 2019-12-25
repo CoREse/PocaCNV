@@ -14,6 +14,6 @@ Processes=[]
 Manager=None
 SampleReadCount=[]
 SequenceDepthRatio=[]
-ScoreThreshold=0.999
+ScoreThreshold=2
 SampleConfidenceThreshold=0.99
 CN2FilterConfidence=0.999

@@ -6,6 +6,7 @@ from scipy.stats import poisson
 from consts import *
 import sys
 from variants import CNV
+from readdepth import cn2filter
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
@@ -14,18 +15,19 @@ def getRDScore(C, TheContig):
     Score=0
     P=1
     for e in C.Evidences:
+        e.PassConfidence=0
         mu=0
         mus=0
         if e.Data.mu==None:
             mu,mus=e.Data.calcMuMus(TheContig)
         else:
             mu,mus=(e.Data.mu,e.Data.mus)
-        length=int(e.End/globals.RDWindowSize)-int(e.Begin/globals.RDWindowSize)
-        for i in range(int(e.Begin/globals.RDWindowSize),int(e.End/globals.RDWindowSize)):
-            mu+=TheContig.RDWindowStandards[i]
-            mus+=TheContig.MixedRDRs[e.Sample][i]/2.0*TheContig.RDWindowStandards[i]
-        mu=int(mu+0.5)
-        mus=int(mus+0.5)
+        if cn2filter(e.Data,TheContig,globals.CN2FilterConfidence):
+            Score+=1
+            e.PassConfidence=globals.CN2FilterConfidence
+        if cn2filter(e.Data,TheContig,0.9999):
+            Score+=1
+            e.PassConfidence=0.9999
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #mus=e.Data.AverageRD/2.0*mu
@@ -47,8 +49,8 @@ def getRDScore(C, TheContig):
             #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
         e.Data.CN=MCN
         e.Confidence=MP
-        if e.Confidence>g.SampleConfidenceThreshold:
-            P*=1-MP
+        #if e.Confidence>g.SampleConfidenceThreshold:
+        #    P*=1-MP
         '''
         qint=poisson.interval(0.99,mu)#(nlambda-k(nlambda)^0.5,nlambda+k(nlambda)^0.5)
         if qint[0]<v<qint[1]:
@@ -63,7 +65,7 @@ def getRDScore(C, TheContig):
         if qint[0]<v<qint[1]:
             Score+=1
         '''
-    return 1-P
+    return Score
 
 def getScore(C,TheContig):
     return getRDScore(C,TheContig)
@@ -152,11 +154,17 @@ def callSV(ReferenceFile,C,TheContig):
         for E in C.Evidences:
             if E.Confidence<=g.SampleConfidenceThreshold:
                 continue
+            if E.PassConfidence<g.CN2FilterConfidence:
+                continue
+            if E.Data.CN==2:
+                continue
             if E.Data.CN<=1:
                 Alleles.add(0)
             else:
                 Alleles.add(E.Data.CN-1)
         Alleles=list(Alleles)
+        if len(Alleles)==0:
+            return SV
         Alleles.sort()
         for E in C.Evidences:
             if E.Sample in Occured or E.Confidence<=g.SampleConfidenceThreshold:
