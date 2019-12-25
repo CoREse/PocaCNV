@@ -33,7 +33,7 @@ def getMemUsage():
     rss=0
     for p in g.Processes:
         rss+=p.memory_info().rss
-        vms+=p.memory_info().rss
+        vms+=p.memory_info().vms
     return "Memroy usage:%.5sgb(rss),%.5sgb(vms)."%(rss/1024/1024/1024,vms/1024/1024/1024)
 
 WriteRDData=False
