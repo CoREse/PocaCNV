@@ -32,6 +32,7 @@ class CandidateCluster:
             return 0
         OL=calcOverlap(self.Begin,self.End,C.Begin,C.End)
         if OL==-1:
+            return -1
             if self.Begin>=C.End:
                 if self.Begin-C.End>CandidateCluster.ClusterConcDistance:
                     return -1
@@ -49,7 +50,7 @@ class CandidateCluster:
                 SContained=True
             elif abs(C.End-C.Begin-OL)<=CandidateCluster.ClusterSideDistance or 0.95<OL/C.End-C.Begin<1/0.95:
                 CContained=True
-            if SContained or CContained:
+            if SContained and CContained:
                 self.Candidates.append(C)
                 self.calc()
             return True
@@ -57,11 +58,15 @@ class CandidateCluster:
     def makeNew(self):
         BeginEdge=[]
         EndEdge=[]
+        '''
         for C in self.Candidates:
             if C.Begin-self.Begin<=CandidateCluster.ClusterSideDistance:
                 BeginEdge.append(C.Begin)
             if self.End-C.End<=CandidateCluster.ClusterSideDistance:
-                EndEdge.append(C.End)
+                EndEdge.append(C.End)'''
+        for C in self.Candidates:
+            BeginEdge.append(C.Begin)
+            EndEdge.append(C.End)
         WBegin=int(statistics.median(BeginEdge)/g.RDWindowSize)
         WEnd=int(statistics.median(EndEdge)/g.RDWindowSize)
         MixedRDRs=self.Contig.MixedRDRs
