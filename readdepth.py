@@ -27,19 +27,24 @@ def cn2likely(Interval,TheContig):
         mu,mus=(Interval.mu,Interval.mus)
     cd=poisson.cdf(mus,mu)
     return min(cd,1-cd)
+def mulikely(mu,mus):
+    cd=poisson.cdf(mus,mu)
+    return min(cd,1-cd)
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None):
         self.WBegin=WBegin
         self.WEnd=WEnd
         self.AverageRD=ARD
-        self.Begin=WBegin*g.RDWindowSize
-        self.End=WEnd*g.RDWindowSize
         self.Sample=Sample
+        self.TheContig=TheContig
+        self.refresh()
+    def refresh(self):
+        self.Begin=self.WBegin*g.RDWindowSize
+        self.End=self.WEnd*g.RDWindowSize
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
         self.mu=None
         self.mus=None
-        self.TheContig=TheContig
         if 1.8<self.AverageRD<2.2:
             self.CN=2
         elif 1.5<=self.AverageRD<=1.8:
@@ -151,7 +156,96 @@ def extractEvidences(Intervals):
                 e.setData(1,I)
                 Evidences.append(e)
     return Evidences
-            
+
+def getExtendables(I,OI):#return None or list with at most 2 (begin, end)
+    Over=calcOverlap(I.WBegin,I.WEnd,OI.WBegin,OI.WEnd)
+    ILength=I.WEnd-I.WBegin
+    OLength=OI.WEnd-OI.WBegin
+    Ex=[]
+    if Over==-1:
+        Endure=(ILength)*0.05
+        if Endure<1:
+            Endure=1
+        if Endure>10:
+            Endure=10
+        Endure=int(Endure)
+        if I.WEnd<OI.WBegin and OI.WBegin-I.WEnd<=Endure:
+            return [(I.WEnd,OI.WEnd)]
+        if OI.WEnd<I.WBegin and I.WBegin-OI.WEnd<=Endure:
+            return [(OI.WBegin,I.WBegin)]
+        return None
+    if Over>=OLength:
+        return None
+    if Over>=ILength:
+        Edges=[I.WBegin,I.WEnd,OI.WBegin,OI.WEnd]
+        Edges.sort()
+        if Edges[1]>Edges[0]:
+            Ex.append((Edges[0],Edges[1]))
+        if Edges[3]>Edges[2]:
+            Ex.append((Edges[2],Edges[3]))
+        if len(Ex)==0:
+            return None
+        return Ex
+    if I.WEnd<OI.WEnd:
+        return [(I.WEnd,OI.WEnd)]
+    return [(OI.WBegin,I.WBegin)]
+    return None
+
+def verifyExtendables(I,Extendables,TheContig):
+    if Extendables==None or len(Extendables)==0:
+        return False
+    if I.CN==2:
+        return False
+    if I.mus==None:
+        mu,mus=I.calcMuMus(TheContig)
+    else:
+        mu,mus=(I.mu,I.mus)
+    muo=0
+    for e in Extendables:
+        for i in range(e[0],e[1]):
+            muo+=TheContig.MixedRDRs[I.Sample][i]/2.0*TheContig.RDWindowStandards[i]
+    if mulikely(mu,muo)<mulikely(mu,mus)*1.3 and ((mu<mus and mu<muo) or(mu>mus and mu>muo)):
+        return True
+    return False
+
+def extend(I,Extendables):
+    if Extendables==None or len(Extendables)==0:
+        return I.WBegin,I.WEnd
+    if len(Extendables)==1:
+        if Extendables[0][0]==I.WEnd:
+            return I.WBegin,Extendables[0][1]
+        return Extendables[0][0],I.WEnd
+    return Extendables[0][0],Extendables[1][1]
+
+def extendIntervals(Intervals,TheContig):#extend intervals by examine other samples intervals
+    for s in range(len(Intervals)):
+        for i in range(len(Intervals[s])):
+            I=Intervals[s][i]
+            ExtendBegin=None
+            ExtendEnd=None
+            for SI in Intervals:
+                for OI in SI:
+                    Extendables=getExtendables(I,OI)
+                    if verifyExtendables(I,Extendables,TheContig):
+                        ExBegin,ExEnd=extend(I,Extendables)
+                        if ExtendBegin==None:
+                            ExtendBegin=ExBegin
+                        else:
+                            ExtendBegin=min(ExtendBegin,ExBegin)
+                        if ExtendEnd==None:
+                            ExtendEnd=ExEnd
+                        else:
+                            ExtendEnd=max(ExtendEnd,ExEnd)
+            if ExtendBegin!=None and ExtendEnd!=None:
+                Intervals[s][i].WBegin=ExtendBegin
+                Intervals[s][i].WEnd=ExtendEnd
+                Ave=0
+                for j in range(ExtendBegin,ExtendEnd):
+                    Ave+=TheContig.MixedRDRs[s][j]
+                Ave/=ExtendEnd-ExtendBegin
+                Intervals[s][i].AverageRD=Ave
+                Intervals[s][i].refresh()
+    return Intervals
 
 def makeRDICandidates(Evidences):
     Candidates=[]
@@ -339,7 +433,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         
     #partition(MixedRDRs)
 
-    RDICandidates=makeRDICandidates(extractEvidences(makeRDIntervals(MixedRDRs)))
+    RDICandidates=makeRDICandidates(extractEvidences(extendIntervals(makeRDIntervals(MixedRDRs),TheContig)))
     return RDICandidates
 
 import pysam

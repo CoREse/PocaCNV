@@ -20,7 +20,7 @@ g=globals
 g.Processes.append(process)
 def getPid(i):
     return os.getpid()
-if globals.ThreadN!=1:
+if globals.ThreadN!=1:#should be placed after parameters were given.
     globals.Pool=Pool(globals.ThreadN)
     globals.Manager=Manager()
     g.Processes.append(psutil.Process(g.Manager._process.ident))
