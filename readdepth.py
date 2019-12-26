@@ -247,6 +247,36 @@ def extendIntervals(Intervals,TheContig):#extend intervals by examine other samp
                 Intervals[s][i].refresh()
     return Intervals
 
+def extendEvidences(Evidences,TheContig):#extend intervals by examine other samples intervals
+    for s in range(len(Evidences)):
+        I=Evidences[s].Data
+        ExtendBegin=None
+        ExtendEnd=None
+        for E in Evidences:
+            OI=E.Data
+            Extendables=getExtendables(I,OI)
+            if verifyExtendables(I,Extendables,TheContig):
+                ExBegin,ExEnd=extend(I,Extendables)
+                if ExtendBegin==None:
+                    ExtendBegin=ExBegin
+                else:
+                    ExtendBegin=min(ExtendBegin,ExBegin)
+                if ExtendEnd==None:
+                    ExtendEnd=ExEnd
+                else:
+                    ExtendEnd=max(ExtendEnd,ExEnd)
+        if ExtendBegin!=None and ExtendEnd!=None:
+            Evidences[s].Data.WBegin=ExtendBegin
+            Evidences[s].Data.WEnd=ExtendEnd
+            Ave=0
+            for j in range(ExtendBegin,ExtendEnd):
+                Ave+=TheContig.MixedRDRs[I.Sample][j]
+            Ave/=ExtendEnd-ExtendBegin
+            Evidences[s].Data.AverageRD=Ave
+            Evidences[s].Data.refresh()
+            Evidences[s].analyzeData()
+    return Evidences
+
 def makeRDICandidates(Evidences):
     Candidates=[]
     for e in Evidences:
@@ -433,7 +463,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         
     #partition(MixedRDRs)
 
-    RDICandidates=makeRDICandidates(extractEvidences(extendIntervals(makeRDIntervals(MixedRDRs),TheContig)))
+    RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs)),TheContig))
     return RDICandidates
 
 import pysam
