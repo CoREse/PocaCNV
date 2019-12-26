@@ -248,13 +248,29 @@ def extendIntervals(Intervals,TheContig):#extend intervals by examine other samp
     return Intervals
 
 def extendEvidences(Evidences,TheContig):#extend intervals by examine other samples intervals
+    print(gettime()+"Extending evidences(%s)..."%(len(Evidences)),file=sys.stderr)
+    Evidences.sort(key=lambda e:e.Data.WBegin)
+    S=0#where now.WBegin > all WEnd before s
     for s in range(len(Evidences)):
         I=Evidences[s].Data
+        for i in range(S,s):
+            if I.WBegin>Evidences[i].Data.WBegin+10:
+                S=i+1
+            else:
+                break
         ExtendBegin=None
         ExtendEnd=None
-        for E in Evidences:
+        MayBreak=False
+        if (s+1)%10000==0:
+            print(gettime()+"%s evidences extended."%(s+1),file=sys.stderr)
+        for s in range(S,len(Evidences)):
+            E=Evidences[s]
             OI=E.Data
+            if OI.WBegin>I.WEnd:
+                MayBreak=True
             Extendables=getExtendables(I,OI)
+            if Extendables==None and MayBreak:
+                break
             if verifyExtendables(I,Extendables,TheContig):
                 ExBegin,ExEnd=extend(I,Extendables)
                 if ExtendBegin==None:

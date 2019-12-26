@@ -360,12 +360,15 @@ def parse_vcf(filename,contigs=None,samples=None):
             End=record.pos+abs(record.info["SVLEN"])
         except:
             try:
-                End=record.info["END"]
+                End=record.pos+abs(record.info["SVLEN"][0])
             except:
                 try:
-                    End=record.stop
+                    End=record.info["END"]
                 except:
-                    pass
+                    try:
+                        End=record.stop
+                    except:
+                        pass
         try:
             chrom=record.chrom
             if samples!=None and len(samples)==1:
