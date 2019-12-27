@@ -16,6 +16,61 @@ import psutil
 from multiprocessing import Manager,Pool
 process = psutil.Process(os.getpid())
 
+#parameters
+g.WriteRDData=False
+g.WriteRDDataOnly=False
+g.Contigs={"chr22"}#if not vacant, contain only those contigs
+g.ExcludeRegionsFileName=None
+#g.ExcludeRegionsFileName="data/mdust-v28-p1.bed"
+#g.ExcludeRegionsFileName="data/exclusion_regions.txt"
+
+g.ReferencePath=None
+g.SamplePaths=[]
+def usage():
+    print("""python3 jcrd [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
+Arguments:
+    -T,--Reference FILENAME   give referencefile(fasta)(str)
+    -W                        Write RD data
+    -WO                       WriteRD data only
+    -C             ContigName Contain (only) contig(str)
+    -J,-j          ThreadNum  Thread number(int)
+    -WS            Size       WindowSize(int)
+    """,file=sys.stderr)
+    exit(0)
+def getParas():
+    i=1
+    while i< len(sys.argv):
+        try:
+            a=sys.argv[i]
+            if a=='-T' or a=="--Reference":
+                g.ReferencePath=sys.argv[i+1]
+                i+=1
+            elif a=='-W':
+                g.WriteRDData=True
+            elif a=='-WO':
+                g.WriteRDData=True
+                g.WriteRDDataOnly=True
+            elif a=='-C':
+                g.Contigs.add(sys.argv[i+1])
+                i+=1
+            elif a=='-J' or a=='-j':
+                g.ThreadN=int(sys.argv[i+1])
+                i+=1
+            elif a=='-WS':
+                g.RDWindowSize=int(sys.argv[i+1])
+                i+=1
+            else:
+                g.SamplePaths.append(sys.argv[i])
+        except:
+            usage()
+        i+=1
+    if g.WriteRDDataOnly:
+        g.ThreadN=1
+    if g.ReferencePath==None or len(g.SamplePaths)==0:
+        usage()
+
+getParas()
+
 g=globals
 g.Processes.append(process)
 def getPid(i):
@@ -36,15 +91,8 @@ def getMemUsage():
         vms+=p.memory_info().vms
     return "Memroy usage:%.5sgb(rss),%.5sgb(vms)."%(rss/1024/1024/1024,vms/1024/1024/1024)
 
-WriteRDData=False
-Contigs={"chr22"}#if not vacant, contain only those contigs
-ExcludeRegionsFileName=None
-#ExcludeRegionsFileName="data/mdust-v28-p1.bed"
-#ExcludeRegionsFileName="data/exclusion_regions.txt"
-
 print(gettime()+"Joint calling started...", file=sys.stderr)
 print(gettime()+"Reading reference...",file=sys.stderr)
-g.ReferencePath=sys.argv[1]
 ReferenceFile=pysam.FastaFile(g.ReferencePath)
 PosCount=0
 mygenome=Genome(ReferenceFile.filename)
@@ -52,14 +100,14 @@ for tid in range(ReferenceFile.nreferences):
     RefInd[ReferenceFile.references[tid]]=tid
     RefStartPos.append(PosCount)
     PosCount+=ReferenceFile.lengths[tid]
-    if len(Contigs)!=0:
-        if ReferenceFile.references[tid] not in Contigs:
+    if len(g.Contigs)!=0:
+        if ReferenceFile.references[tid] not in g.Contigs:
             continue
     c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/globals.RDWindowSize)+(1 if ReferenceFile.lengths[tid]%globals.RDWindowSize!=0 else 0))
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
-print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(sys.argv[1],PosCount,len(mygenome)),file=sys.stderr)
+print(gettime()+"Reference %s read. Length:%s, g.Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
 print(gettime()+"Reading samples...",file=sys.stderr)
 SampleIndex=0
 
@@ -70,14 +118,14 @@ RCount=0
 UnmappedCount=0
 SampleNames=[]
 
-for i in range(2,len(sys.argv)):
-    if sys.argv[i].split(".")[-1]=="rdf":
-        readRDData(mygenome,SampleNames,sys.argv[i])
+for i in range(len(g.SamplePaths)):
+    if g.SamplePaths[i].split(".")[-1]=="rdf":
+        readRDData(mygenome,SampleNames,g.SamplePaths[i])
         #OccurredWindowsN=len(RDWindows[0])
         print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
     else:
-        SamFile=pysam.AlignmentFile(sys.argv[i],"rb",reference_filename=sys.argv[1])
-        SampleNames.append(sys.argv[i].split("/")[-1].split("\\")[-1])
+        SamFile=pysam.AlignmentFile(g.SamplePaths[i],"rb",reference_filename=g.ReferencePath)
+        SampleNames.append(g.SamplePaths[i].split("/")[-1].split("\\")[-1])
         mygenome.addSample(SampleNames[-1])
         ReadCount=0
         for read in SamFile:
@@ -86,7 +134,7 @@ for i in range(2,len(sys.argv)):
             if read.is_unmapped:
                 UnmappedCount+=1
             else:
-                if len(Contigs)!=0:
+                if len(g.Contigs)!=0:
                     CID=mygenome.getContigID(read.tid)
                     if CID==-1:
                         continue
@@ -98,10 +146,12 @@ for i in range(2,len(sys.argv)):
         SamFile.close()
         g.SampleReadCount.append(ReadCount)
         print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
-    if WriteRDData:
+    if g.WriteRDData:
         print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
         writeSampleRDData(mygenome,SampleNames[-1],SampleIndex)
     SampleIndex+=1
+if g.WriteRDDataOnly:
+    exit(0)
 #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
 #exit(0)
 globals.SampleNames=SampleNames
@@ -116,12 +166,12 @@ if len(RDWindows)>1:
         RDWindows[SumI][i]/=SumI
 '''
 
-if ExcludeRegionsFileName!=None:
-    EAFile=open(ExcludeRegionsFileName,"r")
+if g.ExcludeRegionsFileName!=None:
+    EAFile=open(g.ExcludeRegionsFileName,"r")
     ExcludedAreasByContig=readExcludedAreas(EAFile,ReferenceFile)
     EAFile.close()
 '''
-if WriteRDData:
+if g.WriteRDData:
     writeRDData(mygenome,ReferenceFile,SampleNames)
     exit(0)
 '''
@@ -159,7 +209,7 @@ CCount=0
 for cs in Candidates:
     CCount+=len(cs)
 print(gettime()+"Number of candidates:%d. Filtering candidates in LPR..."%CCount,file=sys.stderr)
-if ExcludeRegionsFileName!=None:
+if g.ExcludeRegionsFileName!=None:
     for i in range(len(Candidates)):
         Candidates[i]=filtExcludedAreas(Candidates[i],ExcludedAreasByContig,mygenome[i])
 CCount=0
