@@ -395,6 +395,8 @@ def parse_vcf(filename,contigs=None,samples=None):
                 except Exception as e:
                     continue
             temp=None
+            if abs(record.pos-24326713)<2:
+                a=1
             if record.info["SVTYPE"]=="INS":
                 temp=interval(chrom,record.pos,record.stop+1,"INS")
             elif record.info["SVTYPE"]=="DEL":
@@ -415,11 +417,11 @@ def parse_vcf(filename,contigs=None,samples=None):
                     if samples!=None and len(samples)==1:
                         Al=1
                         if sa[0]==0:
-                            Al=CNs[sa[1]]
+                            Al=CNs[sa[1]-1]
                         if sa[1]==0:
-                            Al=CNs[sa[0]]
+                            Al=CNs[sa[0]-1]
                         if sa[0]==sa[1]:
-                            Al=CNs[sa[0]]
+                            Al=CNs[sa[0]-1]
                         if Al==0:
                             Type="DEL"
                         elif Al>1:

@@ -248,6 +248,7 @@ def extendIntervals(Intervals,TheContig):#extend intervals by examine other samp
     return Intervals
 
 def extendEvidences(Evidences,TheContig):#extend intervals by examine other samples intervals
+    return Evidences
     print(gettime()+"Extending evidences(%s)..."%(len(Evidences)),file=sys.stderr)
     Evidences.sort(key=lambda e:e.Data.WBegin)
     S=0#where now.WBegin > all WEnd before s
