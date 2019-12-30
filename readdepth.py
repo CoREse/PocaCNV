@@ -418,6 +418,25 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 WindowSamples[j]=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
             RDWindowMedians[i]=statistics.median(WindowSamples)
+        AllZeroLeft=-1
+        AllZeroRight=WindowsN
+        Left1=False
+        Right1=False
+        for i in range(WindowsN):
+            if not Right1:
+                j=WindowsN-i
+                if j>=0:
+                    if RDWindowSums[i]!=0:
+                        Right1=True
+                    else:
+                        AllZeroRight=j
+            if not Left1:
+                if RDWindowSums[i]!=0:
+                    Left1=True
+                else:
+                    AllZeroLeft=i
+            if Right1 and Left1:
+                break
         SampleSumAverage=0
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
@@ -435,7 +454,12 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
         for i in range(SampleN):
             for j in range(WindowsN):
-                WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else 0
+                S0Value=0
+                if j<=AllZeroLeft or j>=AllZeroRight:
+                    S0Value=1
+                WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else S0Value
+                if RDWindowStandards[j]==0 and RDWindows[i][j]!=0:
+                    WR=RDWindows[i][j]/RDWindowAverages[j]
                 MixedRDRs[i][j]=WR
                 #MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
                 '''

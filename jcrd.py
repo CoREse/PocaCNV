@@ -16,10 +16,11 @@ import psutil
 from multiprocessing import Manager,Pool
 process = psutil.Process(os.getpid())
 
+g=globals
 #parameters
 g.WriteRDData=False
 g.WriteRDDataOnly=False
-g.Contigs={"chr22"}#if not vacant, contain only those contigs
+g.Contigs=set()#if not vacant, contain only those contigs
 g.ExcludeRegionsFileName=None
 #g.ExcludeRegionsFileName="data/mdust-v28-p1.bed"
 #g.ExcludeRegionsFileName="data/exclusion_regions.txt"
@@ -61,17 +62,18 @@ def getParas():
                 i+=1
             else:
                 g.SamplePaths.append(sys.argv[i])
-        except:
+        except Exception as e:
+            print(e,file=sys.stderr)
             usage()
         i+=1
     if g.WriteRDDataOnly:
         g.ThreadN=1
+        g.Contigs={}
     if g.ReferencePath==None or len(g.SamplePaths)==0:
         usage()
 
 getParas()
 
-g=globals
 g.Processes.append(process)
 def getPid(i):
     return os.getpid()
