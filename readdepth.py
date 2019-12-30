@@ -514,13 +514,11 @@ def writeRDData(mygenome,SampleNames):
     return
 
 def writeSampleRDData(mygenome, SampleName, SampleI):
-    rdfile=open("data/rd%s.rdf"%(SampleName),"w")
-    first=True
+    SamFileName=g.SamplePaths[SampleI].split("/")[-1].split("\\")[-1]
+    rdfile=open("data/%s.rdf"%(SamFileName),"w")
+    print("##Sample:%s"%SampleName,end="",file=rdfile)
     for c in mygenome.Contigs:
-        if not first:
-            print("\n",end="",file=rdfile)
-        first=False
-        print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
+        print("\n#%s %s"%(c.Name,c.Length),end="",file=rdfile)
         for j in range(len(c.RDWindows[SampleI])):
             print("\n%d"%(c.RDWindows[SampleI][j]),end="",file=rdfile)
     rdfile.close()
@@ -529,7 +527,8 @@ def writeSampleRDData(mygenome, SampleName, SampleI):
 def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
     ReferenceFile:pysam.FastaFile
     for i in range(len(SampleNames)):
-        rdfile=open("data/mrd%s.mrd"%(SampleNames[i]),"w")
+        SamFileName=g.SamplePaths[i].split("/")[-1].split("\\")[-1]
+        rdfile=open("data/%s.mrd"%(SamFileName),"w")
         first=True
         for c in mygenome.Contigs:
             if not first:
@@ -543,11 +542,11 @@ def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
 
 def readRDData(mygenome, SampleNames, FileName):
     SampleName=FileName.split("\\")[-1].split("/")[-1][:-4]
-    SampleNameS=SampleName.split("rd")
-    SampleName=""
-    for s in SampleNameS[1:]:
-        SampleName+=s
-    SampleNames.append(SampleName)
+    if "rd"==SampleName[:2]:
+        SampleNameS=SampleName.split("rd")
+        SampleName=""
+        for s in SampleNameS[1:]:
+            SampleName+=s
     DataFile=open(FileName,"r")
     ContigName=None
     mygenome.addSample(SampleName)
@@ -557,15 +556,19 @@ def readRDData(mygenome, SampleNames, FileName):
     ReadCount=0
     for line in DataFile:
         if line[0]=='#':
-            sl=line[1:].split()
-            ContigName=sl[0]
-            if not mygenome.hasContig(ContigName):
-                Skip=True
-                continue
-            Length=int(sl[1])
-            Windows=mygenome.get(ContigName).RDWindows[-1]
-            Skip=False
-            ConI=0
+            if line[1]=="#":
+                sl=line[2:].split(":",maxsplit=1)
+                SampleName=sl[1].strip()
+            else:
+                sl=line[1:].split()
+                ContigName=sl[0]
+                if not mygenome.hasContig(ContigName):
+                    Skip=True
+                    continue
+                Length=int(sl[1])
+                Windows=mygenome.get(ContigName).RDWindows[-1]
+                Skip=False
+                ConI=0
             continue
         if Skip:
             continue
@@ -579,6 +582,7 @@ def readRDData(mygenome, SampleNames, FileName):
         Windows[ConI]=float(line)
         ReadCount+=Windows[ConI]
         ConI+=1
+    SampleNames.append(SampleName)
     g.SampleReadCount.append(ReadCount)
     DataFile.close()
     return

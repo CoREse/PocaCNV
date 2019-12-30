@@ -33,7 +33,7 @@ Arguments:
     -T,--Reference FILENAME   give referencefile(fasta)(str)
     -W                        Write RD data
     -WO                       WriteRD data only
-    -C             ContigName Contain (only) contig(str)
+    -C             ContigName Contain (only) contig, can be used multiple times(str)
     -J,-j          ThreadNum  Thread number(int)
     -WS            Size       WindowSize(int)
     """,file=sys.stderr)
@@ -68,7 +68,6 @@ def getParas():
         i+=1
     if g.WriteRDDataOnly:
         g.ThreadN=1
-        g.Contigs={}
     if g.ReferencePath==None or len(g.SamplePaths)==0:
         usage()
 
@@ -127,7 +126,8 @@ for i in range(len(g.SamplePaths)):
         print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
     else:
         SamFile=pysam.AlignmentFile(g.SamplePaths[i],"rb",reference_filename=g.ReferencePath)
-        SampleNames.append(g.SamplePaths[i].split("/")[-1].split("\\")[-1])
+        Name=SamFile.header["RG"][0]["SM"]
+        SampleNames.append(Name)
         mygenome.addSample(SampleNames[-1])
         ReadCount=0
         for read in SamFile:
