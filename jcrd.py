@@ -108,7 +108,7 @@ for tid in range(ReferenceFile.nreferences):
     mygenome.RefID.append(tid)
     mygenome.append(c)
 RefLength=PosCount
-print(gettime()+"Reference %s read. Length:%s, g.Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
+print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
 print(gettime()+"Reading samples...",file=sys.stderr)
 SampleIndex=0
 
@@ -136,15 +136,11 @@ for i in range(len(g.SamplePaths)):
             if read.is_unmapped:
                 UnmappedCount+=1
             else:
-                if len(g.Contigs)!=0:
-                    CID=mygenome.getContigID(read.tid)
-                    if CID==-1:
-                        continue
-                    mygenome[CID].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
-                    ReadCount+=1
-                else:
-                    mygenome[read.tid].RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
-                    ReadCount+=1
+                TheContig=mygenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
+                if TheContig==None:
+                    continue
+                TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
+                ReadCount+=1
         SamFile.close()
         g.SampleReadCount.append(ReadCount)
         print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)

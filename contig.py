@@ -54,7 +54,11 @@ class Genome:
                 return True
         return False
     def get(self,ContigName):
-        return self.Contigs[self.Index[ContigName]]
+        try:
+            Result=self.Contigs[self.Index[ContigName]]
+        except:
+            return None
+        return Result
     def addSample(self,name):
         for c in self.Contigs:
             c.addSample(name)
