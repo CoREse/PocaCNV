@@ -20,6 +20,7 @@ g=globals
 #parameters
 g.WriteRDData=False
 g.WriteRDDataOnly=False
+g.WriteMixedRDData=False
 g.Contigs=set()#if not vacant, contain only those contigs
 g.ExcludeRegionsFileName=None
 #g.ExcludeRegionsFileName="data/mdust-v28-p1.bed"
@@ -51,6 +52,8 @@ def getParas():
             elif a=='-WO':
                 g.WriteRDData=True
                 g.WriteRDDataOnly=True
+            elif a=="-WM":
+                g.WriteMixedRDData=True
             elif a=='-C':
                 g.Contigs.add(sys.argv[i+1])
                 i+=1
@@ -95,8 +98,10 @@ def getMemUsage():
 print(gettime()+"Joint calling started...", file=sys.stderr)
 print(gettime()+"Reading reference...",file=sys.stderr)
 ReferenceFile=pysam.FastaFile(g.ReferencePath)
+g.ReferenceFile=ReferenceFile
 PosCount=0
 mygenome=Genome(ReferenceFile.filename)
+g.TheGenome=mygenome
 for tid in range(ReferenceFile.nreferences):
     RefInd[ReferenceFile.references[tid]]=tid
     RefStartPos.append(PosCount)

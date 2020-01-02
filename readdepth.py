@@ -466,15 +466,15 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
                 MixedRDRs[i][j]=(SR-WR)/SampleN+WR
                 '''
-        MRMedians=[0]*SampleN
-        for j in range(SampleN):
-            MRMedians[j]=statistics.median(MixedRDRs[j])
+        #MRMedians=[0]*SampleN
+        #for j in range(SampleN):
+        #    MRMedians[j]=statistics.median(MixedRDRs[j])
         for i in range(SampleN):
             for j in range(WindowsN):
                 #MixedRDRs[i][j]=((MixedRDRs[i][j]/MRMedians[i])*2.0) if MRMedians[i]!=0 else 0#standardization to make median 2.0#Nonesense
                 MixedRDRs[i][j]*=2.0#diploid
-                if RDWindowStandards[j]==0:
-                    MixedRDRs[i][j]=2#if windows average is 0, we consider here is not valuable, so mark as normal(CN=2)
+                #if RDWindowStandards[j]==0:
+                    #MixedRDRs[i][j]=2#if windows average is 0, we consider here is not valuable, so mark as normal(CN=2)
     """
     rdtestfile=open("data/rdtest.txt","a")
     for i in range(WindowsN):
@@ -498,10 +498,13 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
     TheContig.RDWindowStandards=RDWindowStandards
-    TheContig.MRMedians=MRMedians
+    #TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs
-        
+    
+    if g.WriteMixedRDData:
+        print(gettime()+"Writing mixed rdrs data...",file=sys.stderr)
+        writeMixedRDData(g.TheGenome,g.ReferenceFile,g.SampleNames)
     #partition(MixedRDRs)
 
     RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs)),TheContig))
@@ -529,12 +532,9 @@ def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
     for i in range(len(SampleNames)):
         SamFileName=g.SamplePaths[i].split("/")[-1].split("\\")[-1]
         rdfile=open("data/%s.mrd"%(SamFileName),"w")
-        first=True
+        print("##Sample:%s"%SampleNames[i],end="",file=rdfile)
         for c in mygenome.Contigs:
-            if not first:
-                print("\n",end="",file=rdfile)
-            first=False
-            print("#%s %s"%(c.Name,c.Length),end="",file=rdfile)
+            print("\n#%s %s"%(c.Name,c.Length),end="",file=rdfile)
             for j in range(len(c.MixedRDRs[i])):
                 print("\n%.8s"%(c.MixedRDRs[i][j]),end="",file=rdfile)
         rdfile.close()
