@@ -502,9 +502,6 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     if NormalizationOnly:
         return MixedRDRs
     
-    if g.WriteMixedRDData:
-        print(gettime()+"Writing mixed rdrs data...",file=sys.stderr)
-        writeMixedRDData(g.TheGenome,g.ReferenceFile,g.SampleNames)
     #partition(MixedRDRs)
 
     RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs)),TheContig))

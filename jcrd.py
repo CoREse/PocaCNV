@@ -196,6 +196,11 @@ for c in mygenome:
     #c.RDICandidates=filtExcludedAreas(c.RDICandidates)
     RDICandidates.append(c.RDICandidates)
     print(gettime()+"%s analyzed. %s"%(c.Name, getMemUsage()),file=sys.stderr)
+
+if g.WriteMixedRDData:
+    print(gettime()+"Writing mixed rdrs data...",file=sys.stderr)
+    writeMixedRDData(mygenome,ReferenceFile,g.SampleNames)
+
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
 print("%s"%(getMemUsage()),file=sys.stderr)
 
