@@ -378,12 +378,14 @@ def unifyRD(RDWindows):
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
+    PPRDWindowAverages=[0]*WindowsN
+    PP=0.9
     RDWindowMedians=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=[0]*SampleN
-    RDWindowStandards=RDWindowMedians
+    RDWindowStandards=PPRDWindowAverages
     unifyRD(RDWindows)#rd/ratio doesnt' obey same dist that coverage/ratio obeys(different variance), so it's better all samples from the same sequence coverage
     if SampleN<2:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
@@ -418,6 +420,9 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 WindowSamples[j]=RDWindows[j][i]
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
             RDWindowMedians[i]=statistics.median(WindowSamples)
+            WindowSamples.sort()
+            De=int(SampleN*0.5*(1-PP))
+            PPRDWindowAverages[i]=statistics.mean(WindowSamples[De:SampleN-De])
         AllZeroLeft=-1
         AllZeroRight=WindowsN
         Left1=False
