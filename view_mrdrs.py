@@ -1,11 +1,12 @@
 from matplotlib import pyplot as plt
 import sys
+import json
 
 ifile = open(sys.argv[1],"r")
 WindowSize=100
 BorderQ=0.1
-MinBorder=10
-MaxBorder=100
+MinBorder=50
+MaxBorder=200
 
 data=[]
 Average=0.0
@@ -25,14 +26,34 @@ for line in ifile:
         continue
     MRDRs[Chr][Ci]=float(line)
     Ci+=1
+ifile.close()
+OtherData=None
+if len(sys.argv)>2:
+    ODF=open(sys.argv[2],"r")
+    OtherData=json.load(ODF)
+    ODF.close()
+try:
+    WindowSize=OtherData["RDWindowSize"]
+except:
+    pass
 
-def show(data,WS,WE):
+def show(data,WS,WE,Border=0,Title=None,OD=None):
     #print(data[WS:WE])
     fig = plt.figure()
     ax1 = fig.add_subplot(211)
-    ax1.vlines(range(WS,WE),[0]*(WE-WS),data[WS:WE])
+    ax1.vlines(range(WS,WE),[0]*(WE-WS),data[WS:WE],color="red")
+    ax1.vlines(range(WS-Border,WS),[0]*Border,data[WS-Border:WS])
+    ax1.vlines(range(WE,WE+Border),[0]*Border,data[WE:WE+Border])
+    if Title!=None:
+        ax1.set_title(Title)
     ax1.grid(True)
-    ax1.axhline(0, color='black',lw=2)
+    if OD!=None:
+        ax2=fig.add_subplot(212)
+        data=OD
+        ax2.vlines(range(WS,WE),[0]*(WE-WS),data[WS:WE],color="red")
+        ax2.vlines(range(WS-Border,WS),[0]*Border,data[WS-Border:WS])
+        ax2.vlines(range(WE,WE+Border),[0]*Border,data[WE:WE+Border])
+        ax1.set_title("RD Standards")
     plt.show()
 
 def help():
@@ -64,15 +85,22 @@ while 1:
             else:
                 sc=Command.split()
             Chr=sc[1]
-            Start=int(int(sc[2])/WindowSize)
-            End=int(int(sc[3])/WindowSize)
-            Length=End-Start
-            Border=int(Length*BorderQ)
+            Start=int(sc[2])
+            End=int(sc[3])
+            WStart=int(Start/WindowSize)
+            WEnd=int(End/WindowSize)
+            WLength=WEnd-WStart
+            Border=int(WLength*BorderQ)
             Border=max(MinBorder,Border)
             Border=min(MaxBorder,Border)
-            print("Showing windows %s:%s-%s(WindowSize=%s)"%(Chr,Start,End,WindowSize),file=sys.stderr)
-            show(MRDRs[Chr],Start-Border,End+Border)
-        except:
+            print("Showing windows %s:%s-%s(WindowSize=%s)"%(Chr,WStart,WEnd,WindowSize),file=sys.stderr)
+            OD=None
+            if OtherData!=None:
+                OD=OtherData["RDWindowStandards"][Chr]
+            Title="MRDR data(%s:%s-%s)"%(Chr,Start,End)
+            show(MRDRs[Chr],WStart,WEnd,Border,Title,OD)
+        except Exception as e:
+            print(e,file=sys.stderr)
             help()
     elif Command[:3]=="set":
         for S in Command.split()[1:]:

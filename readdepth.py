@@ -495,7 +495,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     ERD=1.0
     '''
     g.ERD=1.0#ERD
-    g.MixedRDRs=MixedRDRs
+    #g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
     TheContig.RDWindowStandards=RDWindowStandards
     #TheContig.MRMedians=MRMedians

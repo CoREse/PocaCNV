@@ -10,6 +10,7 @@ from contig import *
 from array import array
 from report import *
 from joint import uniformlyCombine
+import json
 
 import os
 import psutil
@@ -200,6 +201,14 @@ for c in mygenome:
 if g.WriteMixedRDData:
     print(gettime()+"Writing mixed rdrs data...",file=sys.stderr)
     writeMixedRDData(mygenome,ReferenceFile,g.SampleNames)
+    OtherData={}
+    OtherData["RDWindowStandards"]={}
+    for C in mygenome:
+        OtherData["RDWindowStandards"][C.Name]=C.RDWindowStandards
+    OtherData["RDWindowSize"]=g.RDWindowSize
+    ODF=open("data/OtherData.json","w")
+    json.dump(OtherData,ODF)
+    ODF.close()
 
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
 print("%s"%(getMemUsage()),file=sys.stderr)
