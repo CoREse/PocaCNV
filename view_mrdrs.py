@@ -53,7 +53,7 @@ def show(data,WS,WE,Border=0,Title=None,OD=None):
         ax2.vlines(range(WS,WE),[0]*(WE-WS),data[WS:WE],color="red")
         ax2.vlines(range(WS-Border,WS),[0]*Border,data[WS-Border:WS])
         ax2.vlines(range(WE,WE+Border),[0]*Border,data[WE:WE+Border])
-        ax1.set_title("RD Standards")
+        ax2.set_title("RD Standards")
     plt.show()
 
 def help():
