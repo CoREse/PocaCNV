@@ -496,9 +496,6 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     '''
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
-    if g.ThreadN!=1:
-        MixedRDRs=g.Manager.list(MixedRDRs)
-        TheContig.RDWindows=g.Manager.list(TheContig.RDWindows)
     TheContig.MixedRDRs=MixedRDRs
     TheContig.RDWindowStandards=RDWindowStandards
     #TheContig.MRMedians=MRMedians
