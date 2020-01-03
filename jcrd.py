@@ -210,6 +210,11 @@ if g.WriteMixedRDData:
     json.dump(OtherData,ODF)
     ODF.close()
 
+if g.ThreadN!=1:
+    for C in mygenome:
+        C.MixedRDRs=list(C.MixedRDRs)
+        C.RDWindows=list(C.RDWindows)
+
 print("Number of RDI candidates:%d"%(len(RDICandidates)),file=sys.stderr)
 print("%s"%(getMemUsage()),file=sys.stderr)
 
