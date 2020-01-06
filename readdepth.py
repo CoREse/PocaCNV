@@ -94,14 +94,15 @@ def sigDiff(RDRs,i,CurrentRunRatio):
             return True
     return False
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,SampleName):
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
-    gc.collect()
+    SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
     Last=0
     for End,Ave in CutOffs:
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
         Last=End
+    return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading
     Intervals=[None]*len(MixedRDRs)
@@ -115,9 +116,10 @@ def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, 
         args=[]
         #MMixedRDRs=manager.list(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            Intervals[i]=manager.list()
-            args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
-        pool.starmap(makeSampleRDIntervals,args)
+            #Intervals[i]=manager.list()
+            #args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
+            args.append((MixedRDRs[i],i,g.SampleNames[i]))
+        Intervals=pool.starmap(makeSampleRDIntervals,args)
     if TheContig!=None:
         TheContig.Intervals=Intervals
     return Intervals
