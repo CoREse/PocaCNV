@@ -28,8 +28,18 @@ for line in ifile:
     Ci+=1
 ifile.close()
 OtherData=None
+SampleName=None
 if len(sys.argv)>2:
-    ODF=open(sys.argv[2],"r")
+    i=1
+    while i< len(sys.argv):
+        a=sys.argv[i]
+        if a=="-SN":
+            i+=1
+            SampleName=sys.argv[i]
+        else:
+            ODFN=sys.argv[i]
+        i+=1
+    ODF=open(ODFN,"r")
     OtherData=json.load(ODF)
     ODF.close()
 try:
@@ -37,7 +47,7 @@ try:
 except:
     pass
 
-def show(data,WS,WE,Border=0,Title=None,OD=None):
+def show(data,WS,WE,Border=0,Title=None,OD=None,OtherData=None,Chr=None):
     #print(data[WS:WE])
     fig = plt.figure()
     ax1 = fig.add_subplot(211)
@@ -49,11 +59,28 @@ def show(data,WS,WE,Border=0,Title=None,OD=None):
     ax1.grid(True)
     if OD!=None:
         ax2=fig.add_subplot(212)
-        data=OD
-        ax2.vlines(range(WS,WE),[0]*(WE-WS),data[WS:WE],color="red")
-        ax2.vlines(range(WS-Border,WS),[0]*Border,data[WS-Border:WS])
-        ax2.vlines(range(WE,WE+Border),[0]*Border,data[WE:WE+Border])
+        data2=OD
+        ax2.vlines(range(WS,WE),[0]*(WE-WS),data2[WS:WE],color="red")
+        ax2.vlines(range(WS-Border,WS),[0]*Border,data2[WS-Border:WS])
+        ax2.vlines(range(WE,WE+Border),[0]*Border,data2[WE:WE+Border])
         ax2.set_title("RD Standards")
+        if SampleName!=None and OtherData!=None and Chr!=None:
+            if "Segmentation" in OtherData.keys():
+                Last=WS-Border
+                LSeg=None
+                for seg in OtherData["Segmentation"][Chr][SampleName]:
+                    if WS-Border<=seg[0]<WE+Border:
+                        ax1.plot((Last,seg[0]),(seg[1],seg[1]),color="blue")
+                        Last=seg[0]
+                        print(seg)
+                        #ax2.vlines(seg[0],0,data2[seg[0]],color="blue")
+                    elif seg[0]>=WE:
+                        LSeg=seg
+                        break
+                if Last!=WS-Border:
+                    if LSeg!=None:
+                        print(LSeg)
+                        ax1.plot((Last,WE+Border),(LSeg[1],LSeg[1]),color="blue")
     plt.show()
 
 def help():
@@ -98,7 +125,7 @@ while 1:
             if OtherData!=None:
                 OD=OtherData["RDWindowStandards"][Chr]
             Title="MRDR data(%s:%s-%s)"%(Chr,Start,End)
-            show(MRDRs[Chr],WStart,WEnd,Border,Title,OD)
+            show(MRDRs[Chr],WStart,WEnd,Border,Title,OD,OtherData,Chr)
         except Exception as e:
             print(e,file=sys.stderr)
             help()
