@@ -7,6 +7,7 @@ from array import array
 import rpy2.robjects as robjects
 from scipy.stats import poisson
 import gc
+import math
 
 def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
@@ -100,6 +101,10 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     CutOffs=segmentation(SampleMRDRs)
     Last=0
     for End,Ave in CutOffs:
+        Ave=0
+        for i in range(Last,End):
+            Ave+=SampleMRDRs[i]
+        Ave/=End-Last
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
         Last=End
     return SampleIntervals
@@ -135,8 +140,9 @@ def dnacopy_cbs(data):
         if not first:
             datastring+=","
         first=False
-        datastring+="%.7s"%d
-    robjects.r("rddata=data.frame(mrd=c(%s))"%datastring)
+        datastring+="%.7s"%(math.log2(d/2.0 if d!=0 else sys.float_info.min))
+    robjects.r("rm(list=ls())")
+    robjects.r("rddata<-data.frame(mrd=c(%s))"%datastring)
     global script
     if script==None:
         sf=open("dnacopy_cbs.r","r")
