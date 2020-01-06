@@ -103,7 +103,7 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleIntervals,SampleName):
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
         Last=End
 
-def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiprocessing instead of multithreading
+def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading
     Intervals=[None]*len(MixedRDRs)
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         for i in range(len(MixedRDRs)):
@@ -118,6 +118,8 @@ def makeRDIntervals(MixedRDRs):#because robjects.r is singleton, use multiproces
             Intervals[i]=manager.list()
             args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
         pool.starmap(makeSampleRDIntervals,args)
+    if TheContig!=None:
+        TheContig.Intervals=Intervals
     return Intervals
 
 def segmentation(data):
@@ -509,7 +511,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     
     #partition(MixedRDRs)
 
-    RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs)),TheContig))
+    RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
     return RDICandidates
 
 import pysam

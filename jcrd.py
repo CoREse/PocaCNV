@@ -38,6 +38,7 @@ Arguments:
     -C             ContigName Contain (only) contig, can be used multiple times(str)
     -J,-j          ThreadNum  Thread number(int)
     -WS            Size       WindowSize(int)
+    -WM                       Write Mixed RD data and other data
     """,file=sys.stderr)
     exit(0)
 def getParas():
@@ -203,8 +204,15 @@ if g.WriteMixedRDData:
     writeMixedRDData(mygenome,ReferenceFile,g.SampleNames)
     OtherData={}
     OtherData["RDWindowStandards"]={}
+    OtherData["Segmentation"]={}
     for C in mygenome:
         OtherData["RDWindowStandards"][C.Name]=C.RDWindowStandards
+        OtherData["Segmentation"][C.Name]={}
+        for s in range(len(C.Intervals)):
+            SName=g.SampleNames[s]
+            OtherData["Segmentation"][C.Name][SName]=[]
+            for I in C.Intervals[s]:
+                OtherData["Segmentation"][C.Name][SName].append((I.WEnd,I.AverageRD))
     OtherData["RDWindowSize"]=g.RDWindowSize
     ODF=open("data/OtherData.json","w")
     json.dump(OtherData,ODF)
