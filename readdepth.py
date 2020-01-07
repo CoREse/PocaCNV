@@ -21,9 +21,9 @@ def cn2filter(Interval,TheContig,Confidence=None):
         return False
     return True
 
-def cn2likely(Interval,TheContig):
+def cn2likely(Interval,TheContig,CN2Standards=None):
     if Interval.mu==None:
-        mu,mus=Interval.calcMuMus(TheContig)
+        mu,mus=Interval.calcMuMus(TheContig,CN2Standards)
     else:
         mu,mus=(Interval.mu,Interval.mus)
     cd=poisson.cdf(mus,mu)
@@ -60,17 +60,21 @@ class RDInterval:
             self.SupportedSVType=2
     def setContig(TheContig):
         self.TheContig=TheContig
-    def calcMuMus(self,TheContig=None):
+    def calcMuMus(self,TheContig=None,RDS=None):
         if TheContig==None:
             TheContig=self.TheContig
         if TheContig==None:
             raise Exception("No contig given.")
+        RDSData=TheContig.RDWindowStandards
+        if RDS!=None:
+            RDSData=RDS
         length=self.WEnd-self.WBegin
         mu=0
         mus=0
         for i in range(self.WBegin,self.WEnd):
-            mu+=TheContig.RDWindowStandards[i]
-            mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*TheContig.RDWindowStandards[i]
+            mu+=RDSData[i]
+            mus+=TheContig.RDWindows[self.Sample][i]
+            #mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*RDSData[i]
         mu=int(mu+0.5)
         mus=int(mus+0.5)
         self.mu=mu
@@ -128,6 +132,42 @@ def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, 
     if TheContig!=None:
         TheContig.Intervals=Intervals
     return Intervals
+
+def getSDCandidates(TheContig):
+    SDData=TheContig.RDWindowStandards
+    SDAve=statistics.mean(SDData)
+    if SDAve==0:
+        return []
+    SDRs=[]
+    SDAves=[SDAve]*len(SDData)
+    for d in SDData:
+        SDRs.append(d/SDAve)
+    CutOffs=segmentation(SDRs)
+    Last=0
+    SDIntervals=[]
+    for End,Ave in CutOffs:
+        Ave=0
+        for i in range(Last,End):
+            Ave+=SDRs[i]
+        Ave/=End-Last
+        if Ave==0 or 0.6<Ave<1.4:
+            continue
+        for s in range(len(g.SampleNames)):
+            SAve=0
+            for i in range(Last,End):
+                SAve+=TheContig.MixedRDRs[s][i]
+            SAve/=End-Last
+            SInt=RDInterval(s,Last,End,SAve)
+            if cn2likely(SInt,TheContig,SDAves)<1-g.Parameters.CN2FilterConfidence:
+                SDIntervals.append(SInt)
+        Last=End
+    Evidences=[]
+    for I in SDIntervals:
+        e=Evidence()
+        e.setData(1,I)
+        Evidences.append(e)
+    SampleCandidates=makeRDICandidates(Evidences)
+    return SampleCandidates
 
 def segmentation(data):
     return dnacopy_cbs(data)
@@ -520,6 +560,8 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     #partition(MixedRDRs)
 
     RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
+    SDCandidates=getSDCandidates(TheContig)
+    RDICandidates=combineCandidateSets(RDICandidates,SDCandidates)
     return RDICandidates
 
 import pysam

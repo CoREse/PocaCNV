@@ -19,4 +19,4 @@ ReferenceFile=None
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7
-    CN2FilterConfidence=0.99
+    CN2FilterConfidence=0.7
