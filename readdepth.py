@@ -143,6 +143,7 @@ def getSDCandidates(TheContig):
     for d in SDData:
         SDRs.append(d/SDAve)
     CutOffs=segmentation(SDRs)
+    TheContig.SDSegments=[]
     Last=0
     SDIntervals=[]
     for End,Ave in CutOffs:
@@ -150,6 +151,7 @@ def getSDCandidates(TheContig):
         for i in range(Last,End):
             Ave+=SDRs[i]
         Ave/=End-Last
+        TheContig.SDSegments.append((End,Ave))
         if Ave==0 or 0.6<Ave<1.4:
             continue
         for s in range(len(g.SampleNames)):
