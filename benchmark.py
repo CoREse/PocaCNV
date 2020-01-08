@@ -26,16 +26,16 @@ if len(sys.argv)>1:
         if a=="-G":
             GSF=sys.argv[i+1]
             i+=1
-        if a=='-F':
+        elif a=='-F':
             Format=sys.argv[i+1]
             i+=1
-        if a=='-C':
+        elif a=='-C':
             Contigs=[sys.argv[i+1]]
             i+=1
-        if a=='-S':
+        elif a=='-S':
             Samples=[sys.argv[i+1]]
             i+=1
-        if a=="-PO":
+        elif a=="-PO":
             PrintOuts=True
         else:
             MyF=a

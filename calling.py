@@ -35,14 +35,18 @@ def getRDScore(C, TheContig):
         Pmus=0
         for i in range(CNPN):
             Pmus+=CNPriors[i]*poisson.pmf(mus,int(mu*i/2))
-        for CN in range(min(0,eCN-1),eCN+1):
-            if CN>CNPN:
-                CN=CNPN
-            Pmuscn=poisson.pmf(mus,int(mu*CN/2))*CNPriors[CN]
-            Pd=Pmuscn/Pmus if Pmus!=0 else 0
-            if Pd>MP:
-                MP=Pd
-                MCN=CN
+        if Pmus==0:
+            MCN=eCN
+            MP=1
+        else:
+            for CN in range(min(0,eCN-1),eCN+2):
+                if CN>CNPN:
+                    CN=CNPN
+                Pmuscn=poisson.pmf(mus,int(mu*CN/2))*CNPriors[CN]
+                Pd=Pmuscn/Pmus if Pmus!=0 else 0
+                if Pd>MP:
+                    MP=Pd
+                    MCN=CN
             #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
         e.Data.CN=MCN
         e.Confidence=MP
@@ -149,8 +153,8 @@ def callSV(ReferenceFile,C,TheContig):
         Samples=[]
         Occured=set()
         for E in C.Evidences:
-            if E.Confidence<=g.Parameters.SampleConfidenceThreshold:
-                continue
+            #if E.Confidence<=g.Parameters.SampleConfidenceThreshold:
+            #    continue
             if E.Data.CN==2:
                 continue
             if E.Data.CN<=1:
@@ -162,7 +166,7 @@ def callSV(ReferenceFile,C,TheContig):
             return SV
         Alleles.sort()
         for E in C.Evidences:
-            if E.Sample in Occured or E.Confidence<=g.Parameters.SampleConfidenceThreshold:
+            if E.Sample in Occured:# or E.Confidence<=g.Parameters.SampleConfidenceThreshold:
                 continue
             Occured.add(E.Sample)
             SA=(0,0)

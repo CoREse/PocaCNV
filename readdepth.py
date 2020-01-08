@@ -562,8 +562,10 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     #partition(MixedRDRs)
 
     RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
-    SDCandidates=getSDCandidates(TheContig)
-    RDICandidates=combineCandidateSets(RDICandidates,SDCandidates)
+    SegSD=False
+    if SegSD:
+        SDCandidates=getSDCandidates(TheContig)
+        RDICandidates=combineCandidateSets(RDICandidates,SDCandidates)
     return RDICandidates
 
 import pysam
