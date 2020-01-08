@@ -209,7 +209,10 @@ if g.WriteMixedRDData:
     for C in mygenome:
         OtherData["RDWindowStandards"][C.Name]=C.RDWindowStandards
         OtherData["Segmentation"][C.Name]={}
-        OtherData["SDSegments"][C.Name]=C.SDSegments
+        try:
+            OtherData["SDSegments"][C.Name]=C.SDSegments
+        except:
+            pass
         for s in range(len(C.Intervals)):
             SName=g.SampleNames[s]
             OtherData["Segmentation"][C.Name][SName]=[]
