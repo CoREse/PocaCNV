@@ -109,7 +109,7 @@ class Candidate:
             return -1
         if self.SVType!=other.SVType:
             return 0
-        if calcOverlap(self.BreakLeft,self.BreakRight,other.BreakLeft,other.BreakRight)==-1:
+        if calcOverlap(self.BreakLeft,self.BreakRight,other.BreakLeft,other.BreakRight)<=0:#can't be zero, othersize will generate 0 length cnv
             return 0
         #MinLength=min(self.End-self.Begin,other.End-other.Begin)
         ToCombine=False

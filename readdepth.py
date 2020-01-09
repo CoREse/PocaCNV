@@ -99,6 +99,30 @@ def sigDiff(RDRs,i,CurrentRunRatio):
             return True
     return False
 
+def scanConZero(SampleMRDRs):
+    Begin=None
+    AsZero=0.25
+    Ints=[]
+    Ave=0
+    for i in range(len(SampleMRDRs)):
+        R=SampleMRDRs[i]
+        if R==0:
+            if Begin==None:
+                Begin=i
+                Ave=0
+            else:
+                Ave+=R
+        elif R<AsZero:
+            Ave+=R
+        else:
+            if Begin==None:
+                continue
+            else:
+                Ave/=i-Begin
+                Ints.append(((Begin,i),Ave))
+                Begin=None
+    return Ints
+
 def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     SampleIntervals=[]
@@ -111,6 +135,10 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
         Ave/=End-Last
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
         Last=End
+    CZInts=scanConZero(SampleMRDRs)
+    for I in CZInts:
+        SampleIntervals.append(RDInterval(SampleI,I[0][0],I[0][1],I[1]))
+        SampleIntervals.sort(key=lambda I:I.WBegin)
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading
