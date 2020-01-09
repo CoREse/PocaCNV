@@ -15,7 +15,7 @@ HTSLIB=htslib/libhts.a
 
 all: CGetRDScores.so
 
-CGetRDScores.so: getRDscores.cpp
+CGetRDScores.so: getRDScores.cpp
 	$(CC) $^ -o $@ -fPIC -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
 
 $(DNASEQ):$(DNASEQ_OBJS)
