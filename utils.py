@@ -1,8 +1,29 @@
 import globals as g
 import time
+import os
+import psutil
 
 def gettime():
     return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
+
+def getMemUsage():
+    vms=0
+    rss=0
+    for p in g.Processes:
+        rss+=p.memory_info().rss
+        vms+=p.memory_info().vms
+    return "Memroy usage:%.5sgb(rss),%.5sgb(vms)."%(rss/1024/1024/1024,vms/1024/1024/1024)
+
+def getPid(i):
+    return os.getpid()
+
+def addPool(ThePool):
+    Pids=ThePool.map(getPid,range(g.ThreadN))
+    for pid in Pids:
+        g.Processes.append(psutil.Process(pid))
+
+def delPool():
+    g.Processes=g.Processes[:1]
 
 def calclulateSequenceDepthRatio(SequenceDepths=None):
     if SequenceDepths==None:

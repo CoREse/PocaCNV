@@ -8,6 +8,7 @@ import rpy2.robjects as robjects
 from scipy.stats import poisson
 import gc
 import math
+import multiprocessing as mp
 
 def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
@@ -125,6 +126,7 @@ def scanConZero(SampleMRDRs):
 
 def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
+    print("Inner:%sbytes"%sys.getsizeof(SampleMRDRs),file=sys.stderr)
     SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
     Last=0
@@ -139,6 +141,7 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     for I in CZInts:
         SampleIntervals.append(RDInterval(SampleI,I[0][0],I[0][1],I[1]))
         SampleIntervals.sort(key=lambda I:I.WBegin)
+    del SampleMRDRs
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading
@@ -148,15 +151,17 @@ def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, 
             Intervals[i]=[]
             makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
     else:
-        manager=g.Manager
-        pool=g.Pool
+        ctx=mp.get_context("spawn")
+        pool=ctx.Pool(g.ThreadN)
         args=[]
-        #MMixedRDRs=manager.list(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            #Intervals[i]=manager.list()
-            #args.append((MixedRDRs[i],i,Intervals[i],g.SampleNames[i]))
+            print("out:%sbytes"%sys.getsizeof(MixedRDRs[i]),file=sys.stderr)
             args.append((MixedRDRs[i],i,g.SampleNames[i]))
+        addPool(pool)
         Intervals=pool.starmap(makeSampleRDIntervals,args)
+        print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
+        delPool()
+        pool.terminate()
     if TheContig!=None:
         TheContig.Intervals=Intervals
     return Intervals
