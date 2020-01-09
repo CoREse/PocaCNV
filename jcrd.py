@@ -242,11 +242,28 @@ if __name__ == "__main__":
     for i in range(len(mygenome)):
         SVs=[]
         print(gettime()+"Calling CNV for %s"%mygenome[i].Name,file=sys.stderr)
-        for C in Candidates[i]:
-            SV=callSV(ReferenceFile,C,mygenome[i])
-            if SV!="":
-                SV.Chrom=mygenome[i].Name
-                SVs.append(SV)
+        if g.ThreadN==1:
+            for C in Candidates[i]:
+                SV=callSV(ReferenceFile,C,mygenome[i])
+                if SV!="":
+                    SV.Chrom=mygenome[i].Name
+                    SVs.append(SV)
+        else:
+            pool=mp.Pool(g.ThreadN)
+            addPool(pool)
+            Args=[]
+            for C in Candidates[i]:
+                Args.append((C,mygenome[i]))
+            Scores=pool.starmap(getRDScore,Args)
+            print(gettime()+"Scores get. "+getMemUsage(),file=sys.stderr)
+            delPool()
+            pool.terminate()
+            for j in range(len(Candidates[i])):
+                C=Candidates[i][j]
+                SV=callSV(ReferenceFile,C,mygenome[i],Scores[j])
+                if SV!="":
+                    SV.Chrom=mygenome[i].Name
+                    SVs.append(SV)
         SVs.sort(key=lambda s:s.BreakLeft)
         reportVCF(SVs,ReferenceFile.fetch(mygenome[i].Name),sys.stdout)
     ReferenceFile.close()

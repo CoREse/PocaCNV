@@ -7,8 +7,6 @@ BiocManager::install("DNAcopy",update=FALSE, lib="R/library")
 }
 library(DNAcopy)
 
-rddata
-
 rddata$chr <- 1
 rddata$loc <- 1:nrow(rddata)
 

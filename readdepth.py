@@ -9,6 +9,7 @@ from scipy.stats import poisson
 import gc
 import math
 import multiprocessing as mp
+import subprocess
 
 def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
@@ -126,7 +127,6 @@ def scanConZero(SampleMRDRs):
 
 def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
-    print("Inner:%sbytes"%sys.getsizeof(SampleMRDRs),file=sys.stderr)
     SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
     Last=0
@@ -144,18 +144,16 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     del SampleMRDRs
     return SampleIntervals
 
-def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading
-    Intervals=[None]*len(MixedRDRs)
+def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
+        Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            Intervals[i]=[]
-            makeSampleRDIntervals(MixedRDRs[i],i,Intervals[i])
+            Intervals[i]=makeSampleRDIntervals(MixedRDRs[i],i,g.SampleNames[i])
     else:
         ctx=mp.get_context("spawn")
         pool=ctx.Pool(g.ThreadN)
         args=[]
         for i in range(len(MixedRDRs)):
-            print("out:%sbytes"%sys.getsizeof(MixedRDRs[i]),file=sys.stderr)
             args.append((MixedRDRs[i],i,g.SampleNames[i]))
         addPool(pool)
         Intervals=pool.starmap(makeSampleRDIntervals,args)
@@ -216,7 +214,7 @@ def dnacopy_cbs(data):
             datastring+=","
         first=False
         datastring+="%.7s"%(math.log2(d/2.0 if d!=0 else sys.float_info.min))
-    robjects.r("rm(list=ls())")
+    robjects.r("rm(list = ls(all.names=TRUE))")
     robjects.r("rddata<-data.frame(mrd=c(%s))"%datastring)
     global script
     if script==None:

@@ -141,12 +141,13 @@ def getInvolvedSamples(C):
         Ss.add(e.Sample)
     return Ss
 
-def callSV(ReferenceFile,C,TheContig):
+def callSV(ReferenceFile,C,TheContig,Score=None):
     SV=""
     if prefilters(C)!=True:
         return SV
     SVType=getSVType(C)
-    Score=getScore(C,TheContig)
+    if Score==None:
+        Score=getScore(C,TheContig)
     BKL,BKR=getBreak(C)
     if Score>g.Parameters.ScoreThreshold:
         Alleles=set()
