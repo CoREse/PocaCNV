@@ -3,6 +3,8 @@ AR=ar
 CPPFLAGS= -Wall -O3 -Ihtslib
 LDFLAGS=-lz -lm -lbz2 -llzma -lpthread
 LIBS=
+PYTHON=python3.6m
+INCLUDE=/usr/include/$(PYTHON)
 
 PROJECT_OBJS=jc.o
 PROJECT_HEADERS=
@@ -11,7 +13,10 @@ HTSLIB=htslib/libhts.a
 
 .PHONY: all test clean
 
-all: test
+all: CGetRDScores.so
+
+CGetRDScores.so: getRDscores.cpp
+	$(CC) $^ -o $@ -fPIC -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
 
 $(DNASEQ):$(DNASEQ_OBJS)
 	$(AR) -rc $@ $(DNASEQ_OBJS)

@@ -249,15 +249,18 @@ if __name__ == "__main__":
                     SV.Chrom=mygenome[i].Name
                     SVs.append(SV)
         else:
-            pool=mp.Pool(g.ThreadN)
-            addPool(pool)
-            Args=[]
-            for C in Candidates[i]:
-                Args.append((C,mygenome[i]))
-            Scores=pool.starmap(getRDScore,Args)
+            #pool=mp.Pool(g.ThreadN)
+            #addPool(pool)
+            #Args=[]
+            #for C in Candidates[i]:
+            #    Args.append((C,mygenome[i]))
+            #Scores=pool.starmap(getRDScore,Args)
+            import CGetRDScores
+            print("OSize:",len(Candidates[i]))
+            Scores=CGetRDScores.CGetRDScores(Candidates[i],mygenome[i])
             print(gettime()+"Scores get. "+getMemUsage(),file=sys.stderr)
-            delPool()
-            pool.terminate()
+            #delPool()
+            #pool.terminate()
             for j in range(len(Candidates[i])):
                 C=Candidates[i][j]
                 SV=callSV(ReferenceFile,C,mygenome[i],Scores[j])
