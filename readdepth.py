@@ -62,7 +62,7 @@ class RDInterval:
             self.SupportedSVType=2
     def setContig(TheContig):
         self.TheContig=TheContig
-    def calcMuMus(self,TheContig=None,RDS=None):
+    def calcMuMus(self,TheContig=None,RDS=None,RDSAcc=None):
         if TheContig==None:
             TheContig=self.TheContig
         if TheContig==None:
@@ -73,10 +73,17 @@ class RDInterval:
         length=self.WEnd-self.WBegin
         mu=0
         mus=0
-        for i in range(self.WBegin,self.WEnd):
-            mu+=RDSData[i]
-            mus+=TheContig.RDWindows[self.Sample][i]
+        if RDSAcc==None:
+            if RDS==None:
+                RDSAcc=TheContig.RDWindowStandardsAcc
+        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
+        if RDSAcc==None:
+            for i in range(self.WBegin,self.WEnd):
+                mu+=RDSData[i]
+                #mus+=TheContig.RDWindows[self.Sample][i]
             #mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*RDSData[i]
+        else:
+            mu=RDSAcc[self.WEnd]-RDSAcc[self.WBegin]
         mu=int(mu+0.5)
         mus=int(mus+0.5)
         self.mu=mu
@@ -582,10 +589,21 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             MixedRDRs[i][j]/=ERD
     ERD=1.0
     '''
+
+    RDWindowStandardsAcc=array("f",RDWindowStandards)
+    for i in range(1,WindowsN):
+        RDWindowStandardsAcc[i]=RDWindowStandardsAcc[i-1]+RDWindowStandardsAcc[i]
+    RDWindowsAcc=[]
+    for i in range(SampleN):
+        RDWindowsAcc.append(array("f",RDWindows[i]))
+        for j in range(1,WindowsN):
+            RDWindowsAcc[i][j]=RDWindowsAcc[i][j-1]+RDWindowsAcc[i][j]
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
     TheContig.RDWindowStandards=RDWindowStandards
+    TheContig.RDWindowsAcc=RDWindowsAcc
+    TheContig.RDWindowStandardsAcc=RDWindowStandardsAcc
     #TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs
