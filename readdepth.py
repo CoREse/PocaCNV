@@ -590,14 +590,20 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     ERD=1.0
     '''
 
-    RDWindowStandardsAcc=array("f",RDWindowStandards)
-    for i in range(1,WindowsN):
-        RDWindowStandardsAcc[i]=RDWindowStandardsAcc[i-1]+RDWindowStandardsAcc[i]
+    RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
+    Sum=0
+    for i in range(WindowsN):
+        RDWindowStandardsAcc[i]=Sum
+        Sum+=RDWindowStandards[i]
+    RDWindowStandardsAcc[WindowsN]=Sum
     RDWindowsAcc=[]
     for i in range(SampleN):
-        RDWindowsAcc.append(array("f",RDWindows[i]))
-        for j in range(1,WindowsN):
-            RDWindowsAcc[i][j]=RDWindowsAcc[i][j-1]+RDWindowsAcc[i][j]
+        RDWindowsAcc.append(array("f",[0]*(WindowsN+1)))
+        Sum=0
+        for j in range(WindowsN):
+            RDWindowsAcc[i][j]=Sum
+            Sum+=RDWindows[i][j]
+        RDWindowsAcc[i][WindowsN]=Sum
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
