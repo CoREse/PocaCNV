@@ -1,3 +1,0 @@
-要么是段错误，要么是../Objects/listobject.c:189: bad argument to internal function
-还是学学CPython吧。这里的错误就留给之后有兴趣再弄吧。
-用make test重现错误，由于cbs的不确定性，这两种错误是随机发生一种。

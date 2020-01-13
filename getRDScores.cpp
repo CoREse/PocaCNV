@@ -52,15 +52,12 @@ double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int Sample
         int mu=0;
         int mus=0;
         int SampleI=TheCand->SampleIs[i];
-        fprintf(stderr,"fine2.");
         mus=RDWsAcc[SampleI][TheCand->EEs[i]]-RDWsAcc[SampleI][TheCand->EBs[i]]+0.5;
         mu=StandardsAcc[TheCand->EEs[i]]-StandardsAcc[TheCand->EBs[i]]+0.5;
-        fprintf(stderr,"fine3.");
         
         TheCand->PassCs[i]=1.0-mulikely(mu,mus);
         CN2L*=1.0-TheCand->PassCs[i];
 
-        fprintf(stderr,"fine4.");
         int eCN=TheCand->ECNs[i];
         double MP=0,MCN=0,Pmus=0;
         //CNPN=len(CNPriors)-1
@@ -91,12 +88,13 @@ double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int Sample
     return 1-CN2L;
 }
 
-double* getScores(Cand *Cands,int Size, double **RDWsAcc, double* StandardsAcc,int SampleN,int WindowN,double* CNPriors,int CNPN)
+double* getScores(Cand *Cands,int Size, double **RDWsAcc, double* StandardsAcc,int SampleN,int WindowN,double* CNPriors,int CNPN,int ThreadN)
 {
     double * Scores=(double*)malloc(sizeof(double)*Size);
+    omp_set_num_threads(ThreadN);
+    #pragma omp parallel for
     for (int i=0;i<Size;++i)
     {
-        fprintf(stderr,"fine1.--%d--",i);
         Scores[i]=getScore(Cands+i,RDWsAcc,StandardsAcc,SampleN,WindowN,CNPriors,CNPN);
     }
     return Scores;
@@ -107,35 +105,27 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
 {
     Py_Initialize();
     fprintf(stderr,"getting vars...");
-    PyObject *pModule,*pGetRDScore;
-    PyObject *pArgs, *pValue, *Candidates, *TheContig;
-    
-    PyArg_ParseTuple(args,"OO",&Candidates,&TheContig);
+    PyObject *pModule;
+    PyObject *Candidates, *TheContig, *PyThreadN;
+    PyArg_ParseTuple(args,"OOO",&Candidates,&TheContig,&PyThreadN);
+    int ThreadN=PyLong_AsLong(PyThreadN);
 
-    // import
-    pModule = PyImport_Import(PyUnicode_FromString("calling"));
+    
     PyObject * PyCNPriors= PyObject_GetAttrString(PyImport_Import(PyUnicode_FromString("consts")),"CNPriors");
     int CNPN=int(PyList_Size(PyCNPriors))-1;
+    
     double *CNPriors=(double*)malloc(sizeof(double)*(CNPN+1));
     for (int i=0;i<=CNPN;++i) CNPriors[i]=PyFloat_AsDouble(PyList_GetItem(PyCNPriors,i));
-
-    // great_module.great_function
-    pGetRDScore = PyObject_GetAttrString(pModule, "getRDScore"); 
-    //fprintf(stderr,"name:%s",_PyUnicode_AsString(PyObject_CallObject(PyObject_GetAttrString(pGetRDScore,"__str__"),NULL)));
     
-    // build args 
-    pArgs = PyTuple_New(2);
     PyObject* Candidate;
 
-    //long Size=PyLong_AsLong(PyList_Size(Candidates))
     int i=0;
     int Size=int(PyList_Size(Candidates));
-    //double *Scores=(double *)malloc(sizeof(double)*Size);
 
     PyObject * RDWindowsAcc=PyObject_GetAttrString(TheContig,"RDWindowsAcc");
     PyObject * RDStandardsAcc=PyObject_GetAttrString(TheContig,"RDWindowStandardsAcc");
     
-    int WindowN=int(PyList_Size(RDStandardsAcc));
+    int WindowN=int(PyLong_AsLong(PyObject_CallMethod(RDStandardsAcc,"__len__",NULL)))-1;
     int SampleN=int(PyList_Size(RDWindowsAcc));
 
     double *StandardsAcc=(double*)malloc((WindowN+1)*sizeof(double));
@@ -145,13 +135,14 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
         WindowsAcc[j]=(double*)malloc(sizeof(double)*(WindowN+1));
     }
     for (i=0;i<SampleN;++i)
-    for (int j=0;j<WindowN;++j)
+    for (int j=0;j<=WindowN;++j)
     {
-        WindowsAcc[i][j]=PyFloat_AsDouble(PyList_GetItem(PyList_GetItem(RDWindowsAcc,i),j));
+        WindowsAcc[i][j]=PyFloat_AsDouble(PyObject_CallMethod(PyList_GetItem(RDWindowsAcc,i),"__getitem__","O",PyLong_FromLong(j)));
     }
+    
     for (i=0;i<WindowN;++i)
     {
-        StandardsAcc[i]=PyFloat_AsDouble(PyList_GetItem(RDStandardsAcc,i));
+        StandardsAcc[i]=PyFloat_AsDouble(PyObject_CallMethod(RDStandardsAcc,"__getitem__","O",PyLong_FromLong(i)));
     }
 
     Cand * Cands=(Cand*)malloc(sizeof(Cand)*Size);
@@ -174,11 +165,12 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     }
 
     fprintf(stderr,"calculating scores...");
-    double * Scores=getScores(Cands, Size, WindowsAcc, StandardsAcc, SampleN, WindowN, CNPriors,CNPN);
+    double * Scores=getScores(Cands, Size, WindowsAcc, StandardsAcc, SampleN, WindowN, CNPriors,CNPN,ThreadN);
     
     fprintf(stderr,"writing back...");
 
     PyObject *Results=PyList_New(0);
+    
     for (i=0;i<Size;++i)
     {
         Candidate=PyList_GetItem(Candidates,i);
@@ -199,6 +191,7 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     for (i=0;i<SampleN;++i) free(WindowsAcc[i]);
     for (i=0;i<Size;++i) freeCand(Cands+i);
     free(Cands);
+    fprintf(stderr,"before return fine.Size:%d",i);
     return Results;
 }
 

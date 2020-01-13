@@ -256,11 +256,7 @@ if __name__ == "__main__":
             #    Args.append((C,mygenome[i]))
             #Scores=pool.starmap(getRDScore,Args)
             import CGetRDScores
-            print("OSize:",len(Candidates[i]),vars(Candidates[i][0].Evidences[0].Data),vars(Candidates[i][1].Evidences[0].Data),vars(Candidates[i][2].Evidences[0].Data),file=sys.stderr)
-            print("N55Size:",len(Candidates[i][55].Evidences),file=sys.stderr)
-            #print("N55CN:",Candidates[i][55].Evidences[2].Data.WBegin,Candidates[i][55].Evidences[2].Data.CN,vars(Candidates[i][55].Evidences[2].Data),file=sys.stderr)
-            #print("N55:",Candidates[i][55].Evidences[2].Data.CN,file=sys.stderr)
-            Scores=CGetRDScores.CGetRDScores(Candidates[i],mygenome[i])
+            Scores=CGetRDScores.CGetRDScores(Candidates[i],mygenome[i],g.ThreadN)
             print(gettime()+"Scores get. "+getMemUsage(),file=sys.stderr)
             #delPool()
             #pool.terminate()
