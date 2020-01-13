@@ -134,6 +134,7 @@ def scanConZero(SampleMRDRs):
 
 def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
+    sys.stderr.flush()
     SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
     Last=0
