@@ -103,8 +103,9 @@ double* getScores(Cand *Cands,int Size, double **RDWsAcc, double* StandardsAcc,i
 
 PyObject* getRDScores(PyObject *self, PyObject *args)
 {
-    Py_Initialize();
+    //Py_Initialize();
     fprintf(stderr,"getting vars...");
+    fflush(stderr);
     PyObject *pModule;
     PyObject *Candidates, *TheContig, *PyThreadN;
     PyArg_ParseTuple(args,"OOO",&Candidates,&TheContig,&PyThreadN);
