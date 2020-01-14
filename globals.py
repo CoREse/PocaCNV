@@ -14,8 +14,6 @@ Processes=[]
 Manager=None
 SampleReadCount=[]
 SequenceDepthRatio=[]
-TheGenome=None
-ReferenceFile=None
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7
