@@ -77,8 +77,16 @@ double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int Sample
         mus=RDWsAcc[SampleI][TheCand->EEs[i]]-RDWsAcc[SampleI][TheCand->EBs[i]]+0.5;
         mu=StandardsAcc[TheCand->EEs[i]]-StandardsAcc[TheCand->EBs[i]]+0.5;
         
-        TheCand->PassCs[i]=1.0-mulikely(mu,mus);
-        CN2L*=1.0-TheCand->PassCs[i];
+        double PSum=0.0;
+        int SumN=0;
+        for (int i=double(mu)*0.75;i<double(mu)*1.25;++i)
+        {
+            PSum+=mulikely(i,mus);
+            ++SumN;
+        }
+        PSum/=SumN;
+        CN2L*=PSum;
+        TheCand->PassCs[i]=1.0-PSum;
 
         int eCN=TheCand->ECNs[i];
         double MP=0,MCN=0,Pmus=0;

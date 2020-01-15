@@ -37,7 +37,8 @@ def reportVCF(SVs,RefSeq,OutFile,ReportHeader=False,MyGenome=None):
             first=False
             ACS+="%d"%AC[i]
             AFS+="%s"%AF[i]
-        INFO="SVTYPE=%s;END=%s;IMPRECISE;SVLEN=%d;AC=%s;AF=%s;NS=%d;AN=%d;VT=SV"%(SV.SVType,SV.BreakRight,SVLEN,ACS,AFS,NS,AN)
+        SC="%s"%SV.Score
+        INFO="SVTYPE=%s;END=%s;IMPRECISE;SVLEN=%d;AC=%s;AF=%s;NS=%d;AN=%d;SC=%s;VT=SV"%(SV.SVType,SV.BreakRight,SVLEN,ACS,AFS,NS,AN,SC)
         print("%s\t%s\t*\t%s\t%s\t100\tPASS\t%s\tGT"%(SV.Chrom,SV.BreakLeft,Ref,Alt,INFO),end="",file=OutFile)
         SI=0
         for i in range(len(g.SampleNames)):
@@ -79,6 +80,7 @@ def reportVCFHeader(OutFile,MyGenome):
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Estimated allele frequency in the range (0,1)">
 ##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of samples with data">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=SC,Number=1,Type=Float,Description="Calling score of this CNV">
 ##INFO=<ID=VT,Number=.,Type=String,Description="indicates what type of variant the line represents">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT"""
     for s in g.SampleNames:
