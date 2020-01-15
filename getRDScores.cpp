@@ -3,6 +3,9 @@
 #include <omp.h>
 #include <stdlib.h>
 #include "include/stats.hpp"
+//#include <boost/math/distributions/poisson.hpp>
+//#include <gsl/gsl_randist.h>
+//#include <gsl/gsl_cdf.h>
 
 struct Cand
 {
@@ -38,10 +41,29 @@ void freeCand(Cand *a)
     if (a->Confs!=NULL) free(a->Confs);
 }
 #define min(x,y) (x>y?y:x)
+double pcdf(int mu, int mus);
 double mulikely(int mu, int mus)
 {
-    double cd=stats::ppois(mus,mu);
+    //double cd=stats::ppois(mus,mu);
+    double cd=pcdf(mus,mu);
     return min(cd,1.0-cd);
+}
+inline double poisson(int x,int lambda)
+{
+    if (lambda==0) return 0.0;
+    //return gsl_ran_poisson_pdf(x,lambda);
+    return stats::dpois(x,lambda);
+    //return boost::math::pdf(x,lambda);
+    //return pow(lambda,x)/tgamma(x+1)*exp(-lambda);
+}
+inline double pcdf(int mus, int mu)
+{
+    if (mu==0) return 0.0;
+    //return gsl_cdf_poisson_P(mus,mu);
+    return stats::ppois(mus,mu);
+    //double Result=0.0;
+    //for (int i=0;i<=mus;++i) Result+=poisson(i,mu);
+    //return Result;
 }
 
 double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int SampleN,int WindowN,double* CNPriors,int CNPN)
@@ -63,17 +85,17 @@ double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int Sample
         //CNPN=len(CNPriors)-1
         
         for (int j=0;j<CNPN;++j)
-            Pmus+=CNPriors[j]*stats::dpois(mus,int(mu*j/2));
+            Pmus+=CNPriors[j]*poisson(mus,mu*j/2==0?1:mu*j/2);
         if (Pmus==0)
         {
             MCN=eCN;
             MP=1;
         }
         else{
-            for (int CN=min(0,eCN-1);CN<eCN+2;++CN){
+            for (int CN=min(0,eCN-1);CN<min(CNPN+1,eCN+2);++CN){
                 if (CN>CNPN)
                     CN=CNPN;
-                double Pmuscn=stats::dpois(mus,int(mu*CN/2))*CNPriors[CN];
+                double Pmuscn=poisson(mus,mu*CN/2==0?1:mu*CN/2)*CNPriors[CN];
                 double Pd=Pmuscn/Pmus;
                 if (Pd>MP)
                 {

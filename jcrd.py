@@ -268,7 +268,7 @@ if __name__ == "__main__":
     for i in range(len(mygenome)):
         SVs=[]
         print(gettime()+"Calling CNV for %s"%mygenome[i].Name,file=sys.stderr)
-        if g.ThreadN==1:
+        if False and g.ThreadN==1:
             for C in Candidates[i]:
                 SV=callSV(ReferenceFile,C,mygenome[i])
                 if SV!="":
