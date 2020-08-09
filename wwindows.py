@@ -12,6 +12,12 @@ for fn in sys.argv[3:]:
         data=0
         for line in ifile:
             if line[0]=="#":
+                if line[1]=="#":
+                    if not first:
+                        print("\n",end="",file=nf)
+                    first=False
+                    print(line.strip(),end="",file=nf)
+                    continue
                 if ConI%mul!=0:
                     print("\n%s"%(data),end="",file=nf)
                 chrname=line[1:].split()[0]

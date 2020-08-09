@@ -38,6 +38,8 @@ fasttest:
 
 qtest:
 	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/rd*chr22.cram.rdf >data/qtest.vcf
+qtest100:
+	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/100rd*chr22.cram.rdf -WS 10000 >data/qtest100.vcf
 qtestco:
 	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa -LC data/AllData.data data/rd*chr22.cram.rdf >data/qtest.vcf
 qtestc:
