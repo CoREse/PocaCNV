@@ -136,7 +136,7 @@ def scanConZero(SampleMRDRs):
                 Begin=None
     return Ints
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,RDWindowSize=None):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     sys.stderr.flush()
     SampleIntervals=[]
@@ -147,11 +147,11 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName):
         for i in range(Last,End):
             Ave+=SampleMRDRs[i]
         Ave/=End-Last
-        SampleIntervals.append(RDInterval(SampleI,Last,End,Ave))
+        SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,None,RDWindowSize))
         Last=End
     CZInts=scanConZero(SampleMRDRs)
     for I in CZInts:
-        SampleIntervals.append(RDInterval(SampleI,I[0][0],I[0][1],I[1]))
+        SampleIntervals.append(RDInterval(SampleI,I[0][0],I[0][1],I[1],None,RDWindowSize))
         SampleIntervals.sort(key=lambda I:I.WBegin)
     del SampleMRDRs
     return SampleIntervals
@@ -166,7 +166,7 @@ def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, 
         pool=ctx.Pool(g.ThreadN)
         args=[]
         for i in range(len(MixedRDRs)):
-            args.append((MixedRDRs[i],i,g.SampleNames[i]))
+            args.append((MixedRDRs[i],i,g.SampleNames[i],g.RDWindowSize))
         addPool(pool)
         Intervals=pool.starmap(makeSampleRDIntervals,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
