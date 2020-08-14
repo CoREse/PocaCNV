@@ -35,16 +35,20 @@ def mulikely(mu,mus):
     return min(cd,1-cd)
 
 class RDInterval:
-    def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None):
+    def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None,RDWindowSize=None):#multiprocessing will make g.RDWindowSize to default value
         self.WBegin=WBegin
         self.WEnd=WEnd
         self.AverageRD=ARD
         self.Sample=Sample
         self.TheContig=TheContig
+        if RDWindowSize==None:
+            self.RDWindowSize=g.RDWindowSize
+        else:
+            self.RDWindowSize=RDWindowSize
         self.refresh()
     def refresh(self):
-        self.Begin=self.WBegin*g.RDWindowSize
-        self.End=self.WEnd*g.RDWindowSize
+        self.Begin=self.WBegin*self.RDWindowSize
+        self.End=self.WEnd*self.RDWindowSize
         self.SupportedSVType=None#0:del, 1:insertion, 2:dup
         self.mu=None
         self.mus=None
