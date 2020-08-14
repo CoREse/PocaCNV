@@ -93,6 +93,9 @@ if __name__ == "__main__":
 
     g.Processes.append(process)
 
+    print(gettime()+"Run command:",end="",file=sys.stderr)
+    for a in sys.argv:
+        print(" %s"%a,end="",file=sys.stderr)
     print(gettime()+"Joint calling started...", file=sys.stderr)
     print(gettime()+"Reading reference...",file=sys.stderr)
     ReferenceFile=pysam.FastaFile(g.ReferencePath)
