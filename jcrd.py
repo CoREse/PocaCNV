@@ -99,8 +99,8 @@ if __name__ == "__main__":
     PosCount=0
     mygenome=Genome(ReferenceFile.filename)
     for tid in range(ReferenceFile.nreferences):
-        RefInd[ReferenceFile.references[tid]]=tid
-        RefStartPos.append(PosCount)
+        g.RefInd[ReferenceFile.references[tid]]=tid
+        g.RefStartPos.append(PosCount)
         PosCount+=ReferenceFile.lengths[tid]
         if len(g.Contigs)!=0:
             if ReferenceFile.references[tid] not in g.Contigs:

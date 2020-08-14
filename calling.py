@@ -1,5 +1,5 @@
-from globals import *
 import globals
+g=globals
 from utils import *
 import math
 from scipy.stats import poisson
@@ -86,9 +86,9 @@ def getScore(C,TheContig):
     Score+=RDScore
     #read-depth break interval score
     MeanRD=0
-    IntervalWN=int(C.BreakRight/RDWindowSize)+1-int(C.BreakLeft/RDWindowSize)
+    IntervalWN=int(C.BreakRight/g.RDWindowSize)+1-int(C.BreakLeft/g.RDWindowSize)
     SampleN=len(TheContig.MixedRDRs)
-    for i in range(int(C.BreakLeft/RDWindowSize),int(C.BreakRight/RDWindowSize)):
+    for i in range(int(C.BreakLeft/g.RDWindowSize),int(C.BreakRight/g.RDWindowSize)):
         MeanRD+=TheContig.MixedRDRs[SampleN-1][i]
     MeanRD/=IntervalWN
     if MeanRD>100:#reduce calculation
@@ -114,7 +114,7 @@ def getScore(C,TheContig):
 
     if N==0:
         return Score
-    U=((float(U)/N)-MedianInsertionSize)/ISSD*float(N)**0.5
+    U=((float(U)/N)-g.MedianInsertionSize)/g.ISSD*float(N)**0.5
     Score+=U
     return Score
 

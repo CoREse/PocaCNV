@@ -1,5 +1,5 @@
-from globals import *
 from utils import *
+import globals as g
 import pysam
 import sys
 
@@ -25,8 +25,8 @@ class PairInfo:
             if Read2.is_unmapped:
                 pass
             else:
-                R2S=Read2.reference_start+RefStartPos[Read2.tid]
-                R2E=Read2.reference_end+RefStartPos[Read2.tid]
+                R2S=Read2.reference_start+g.RefStartPos[Read2.tid]
+                R2E=Read2.reference_end+g.RefStartPos[Read2.tid]
                 self.LStart=R2S
                 self.LEnd=R2E
                 self.LLength=Read2.query_length
@@ -38,8 +38,8 @@ class PairInfo:
                 if Read2.is_reverse:
                     self.Flags|=PairInfo.LReversed|PairInfo.RReversed
         else:
-            R1S=Read1.reference_start+RefStartPos[Read1.tid]
-            R1E=Read1.reference_end+RefStartPos[Read1.tid]
+            R1S=Read1.reference_start+g.RefStartPos[Read1.tid]
+            R1E=Read1.reference_end+g.RefStartPos[Read1.tid]
             if Read2.is_unmapped:
                 self.LStart=R1S
                 self.LEnd=R1E
@@ -52,8 +52,8 @@ class PairInfo:
                 if Read1.is_reverse:
                     self.Flags|=PairInfo.LReversed|PairInfo.RReversed
             else:
-                R2S=Read2.reference_start+RefStartPos[Read2.tid]
-                R2E=Read2.reference_end+RefStartPos[Read2.tid]
+                R2S=Read2.reference_start+g.RefStartPos[Read2.tid]
+                R2E=Read2.reference_end+g.RefStartPos[Read2.tid]
                 if Read1.reference_name!=Read2.reference_name:
                     self.Flags|=PairInfo.TransChrs
                 if R1S<R2S:
@@ -90,7 +90,7 @@ class PairInfo:
     
     def isDiscordant(pi,conditionF=None):
         if conditionF==None:
-            if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*ISSD or pi.InsertionSize>MedianInsertionSize+3*ISSD:
+            if pi.NMapped!=2 or pi.InsertionSize<MedianInsertionSize-3*g.ISSD or pi.InsertionSize>MedianInsertionSize+3*g.ISSD:
                 return True
         else:
             return conditionF(pi)
@@ -102,7 +102,7 @@ class PairInfo:
         if Pair1.NMapped==Pair2.NMapped:
             if Pair1.hasFlags(PairInfo.Crossed|PairInfo.Contained) or Pair2.hasFlags(PairInfo.Crossed|PairInfo.Contained):
                 return False
-            if abs(Pair1.Start-Pair2.Start)<3*ISSD and abs(Pair1.End-Pair2.End)<3*ISSD\
+            if abs(Pair1.Start-Pair2.Start)<3*g.ISSD and abs(Pair1.End-Pair2.End)<3*g.ISSD\
                 and (Pair1.NMapped!=2 or (Pair1.NMapped==2 and Pair1.LEnd<=Pair2.RStart and Pair2.LEnd<=Pair1.RStart)):
                 return True
             return False
@@ -114,9 +114,9 @@ class PairInfo:
             return 1
         elif self.NMapped==0:
             return 2
-        elif self.InsertionSize<MedianInsertionSize-3*ISSD:
+        elif self.InsertionSize<MedianInsertionSize-3*g.ISSD:
             return 3
-        elif self.InsertionSize>MedianInsertionSize+3*ISSD:
+        elif self.InsertionSize>MedianInsertionSize+3*g.ISSD:
             return 4
         return 0
 
@@ -129,7 +129,7 @@ def cluster(Reads):
         for j in range(i+1,len(Reads)):
             if Reads[i].linked(Reads[j]):
                 Edges[i].append(j)
-            if abs(Reads[i].Start-Reads[j].Start)>=3*ISSD:
+            if abs(Reads[i].Start-Reads[j].Start)>=3*g.ISSD:
                 break
     print("edges built, clustering...",file=sys.stderr)
     Current=[]
