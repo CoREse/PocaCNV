@@ -470,6 +470,27 @@ def unifyRD(RDWindows):
         for i in range(len(RDWindows[s])):
             RDWindows[s][i]/=g.SequenceDepthRatio[s]
 
+def getNormalRD(SampleI,WindowI):
+    return g.StatisticalRDWindowSums[WindowI]*(g.SampleReadCount[SampleI]/g.StatisticalReadCounts[WindowI])
+
+def getIntervalNormalRD(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a window interval
+    SampleN=len(TheContig.RDWindows)
+    WindowN=len(TheContig.RDWindows[0])
+    SampleSums=[]
+    for i in range(SampleN):
+        Sum=0
+        for j in range(WindowN):
+            Sum+=TheContig.RDWindows[i][j]
+        SampleSums.append((Sum,i))
+    SampleSums.sort(key=lambda s:s[0])
+    Sum=0
+    De=int(SampleN*0.5*(1-PP))
+    StatReadCount=0
+    for s in SampleSums[De:SampleN-De]:
+        Sum+=s[0]
+        StatReadCount+=g.SampleReadCount[s[1]]
+    return Sum*(g.SampleReadCount[SampleI]/StatReadCount)
+
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
@@ -477,11 +498,23 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     PP=0.9
     RDWindowMedians=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
+    g.RDWindowSums=RDWindowSums
     SampleN=len(RDWindows)
     SampleSums=[0]*SampleN
     SampleAverages=[0]*SampleN
     RDWindowStandards=PPRDWindowAverages
-    unifyRD(RDWindows)#rd/ratio doesnt' obey same dist that coverage/ratio obeys(different variance), so it's better all samples from the same sequence coverage
+    #WindowsP=[0]*WindowsN#use maximal-likelyhood estimate to estimate poisson(np)'s p, with sequencing reads number as n. As a result, the p=(sum of rd of all samples)/(sum of n)
+    #furthermore, the standard rd of sample i should be p*ni=(sum of rd)*((ni)/(sum of n))
+    AllReadCount=0#sum of n
+    StatisticalReadCounts=[0]*WindowsN#remove the least and last samples
+    StatisticalRDWindowSums=[0]*WindowsN
+    for i in range(SampleN):
+        AllReadCount+=g.SampleReadCount[i]
+    g.AllReadCount=AllReadCount
+    #for i in range(WindowsN):
+    #    WindowsP[i]=RDWindowSums[i]/AllReadCount
+    #use estimate p to ultilize the data from different sequencing coverage
+    #unifyRD(RDWindows)#rd/ratio doesnt' obey same dist that coverage/ratio obeys(different variance), so it's better all samples from the same sequence coverage
     if SampleN<2:#WR,SR组合不太科学，假如几个样本同时有某个变异，那么很可能无法检测出这个变异，样本很多时不如直接用WR（基于变异占少数的假设），但假如变异本身不罕见就又有问题了
         for i in range(WindowsN):
             for j in range(SampleN):
@@ -507,17 +540,24 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 #WR=(RDWindows[i][j]/RDWindowAverages[j]) if RDWindowAverages[j]!=0 else 0
                 #MixedRDRs[i][j]=(SR-WR)/SampleN+WR
     else:
-        WindowSamples=[0]*SampleN
+        WindowSamples=[]
+        for j in range(SampleN):
+            WindowSamples.append((0,0))
         for i in range(WindowsN):
             for j in range(SampleN):
                 RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
-                WindowSamples[j]=RDWindows[j][i]
+                WindowSamples[j]=(RDWindows[j][i],j)
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
             RDWindowMedians[i]=statistics.median(WindowSamples)
-            WindowSamples.sort()
+            WindowSamples.sort(key=lambda s:s[0])
             De=int(SampleN*0.5*(1-PP))
-            PPRDWindowAverages[i]=statistics.mean(WindowSamples[De:SampleN-De])
+            for s in WindowSamples[De:SampleN-De]:
+                StatisticalRDWindowSums[i]+=s[0]
+                StatisticalReadCounts[i]+=g.SampleReadCount[s[1]]
+            #PPRDWindowAverages[i]=statistics.mean(WindowSamples[De:SampleN-De])
+        g.StatisticalRDWindowSums=StatisticalRDWindowSums
+        g.StatisticalReadCounts=StatisticalReadCounts
         AllZeroLeft=-1
         AllZeroRight=WindowsN
         Left1=False
@@ -557,7 +597,9 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 S0Value=0
                 if j<=AllZeroLeft or j>=AllZeroRight:
                     S0Value=1
-                WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else S0Value
+                #WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else S0Value
+                Standard=getNormalRD(i,j)
+                WR=RDWindows[i][j]/Standard if Standard!=0 else S0Value
                 if RDWindowStandards[j]==0 and RDWindows[i][j]!=0:
                     WR=RDWindows[i][j]/RDWindowAverages[j]
                 MixedRDRs[i][j]=WR

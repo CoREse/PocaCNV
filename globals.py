@@ -14,6 +14,10 @@ Processes=[]
 Manager=None
 SampleReadCount=[]
 SequenceDepthRatio=[]
+RDWindowSums=None
+AllReadCount=0
+StatisticalRDWindowSums=None
+StatisticalReadCounts=None
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7
