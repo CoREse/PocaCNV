@@ -12,6 +12,9 @@ class Contig:
     def addSample(self,name=""):
         self.RDWindows.append(array("f",[0]*self.Length))
         self.SampleNames.append(name)
+    
+    def changeSampleName(self, Index, Name):
+        self.SampleNames[Index]=Name
     """
     def __getitem__(self,i):
         return self.RDWindows[i]
@@ -64,5 +67,9 @@ class Genome:
             c.addSample(name)
         self.SampleNames.append(name)
         self.SampleN+=1
+    def changeSampleName(self, Index, Name):
+        for c in self.Contigs:
+            c.changeSampleName(self, Index, Name)
+        self.SampleNames[Index]=Name
     def __len__(self):
         return len(self.Contigs)

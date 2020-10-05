@@ -671,15 +671,16 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     return RDICandidates
 
 import pysam
-def writeRDData(mygenome,SampleNames):
+def writeRDData(mygenome,SampleNames,SampleReadCount):
     for i in range(len(SampleNames)):
-        writeSampleRDData(mygenome,SampleNames[i],i)
+        writeSampleRDData(mygenome,SampleNames[i],i,SampleReadCount[i])
     return
 
-def writeSampleRDData(mygenome, SampleName, SampleI):
+def writeSampleRDData(mygenome, SampleName, SampleI, SampleReadCount):
     SamFileName=g.SamplePaths[SampleI].split("/")[-1].split("\\")[-1]
     rdfile=open("data/%s.rdf"%(SamFileName),"w")
     print("##Sample:%s"%SampleName,end="",file=rdfile)
+    print("\n##SampleReadCount:%s"%SampleReadCount,end="",file=rdfile)
     for c in mygenome.Contigs:
         print("\n#%s %s"%(c.Name,c.Length),end="",file=rdfile)
         for j in range(len(c.RDWindows[SampleI])):
@@ -714,11 +715,15 @@ def readRDData(mygenome, SampleNames, FileName):
     Windows=None
     ConI=0
     ReadCount=0
+    SampleReadCount=None
     for line in DataFile:
         if line[0]=='#':
             if line[1]=="#":
                 sl=line[2:].split(":",maxsplit=1)
-                SampleName=sl[1].strip()
+                if sl[0]=="Sample":
+                    SampleName=sl[1].strip()
+                elif sl[0]=="SampleReadCount":
+                    SampleReadCount=int(sl[1].strip())
             else:
                 sl=line[1:].split()
                 ContigName=sl[0]
@@ -743,6 +748,10 @@ def readRDData(mygenome, SampleNames, FileName):
         ReadCount+=Windows[ConI]
         ConI+=1
     SampleNames.append(SampleName)
-    g.SampleReadCount.append(ReadCount)
+    mygenome.changeSampleName(-1,SampleName)
+    if SampleReadCount==None:
+        g.SampleReadCount.append(ReadCount)
+    else:
+        g.SampleReadCount.append(SampleReadCount)
     DataFile.close()
     return

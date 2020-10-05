@@ -39,7 +39,7 @@ if __name__ == "__main__":
     Arguments:
         -T,--Reference FILENAME   give referencefile(fasta)(str)
         -W                        Write RD data
-        -WO                       WriteRD data only
+        -WO                       Write RD data only(no calling)
         -C             ContigName Contain (only) contig, can be used multiple times(str)
         -J,-j          ThreadNum  Thread number(int)
         -WS            Size       WindowSize(int)
@@ -140,6 +140,7 @@ if __name__ == "__main__":
                     read: pysam.AlignedSegment
                     if read.is_unmapped:
                         UnmappedCount+=1
+                        ReadCount+=1#Unmapped reads also count(to accurately measure the coverage)
                     else:
                         TheContig=mygenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
                         if TheContig==None:
@@ -151,7 +152,7 @@ if __name__ == "__main__":
                 print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
             if g.WriteRDData:
                 print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
-                writeSampleRDData(mygenome,SampleNames[-1],SampleIndex)
+                writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount)
             SampleIndex+=1
         if g.WriteRDDataOnly:
             exit(0)
