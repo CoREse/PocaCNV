@@ -680,7 +680,7 @@ def writeSampleRDData(mygenome, SampleName, SampleI, SampleReadCount):
     SamFileName=g.SamplePaths[SampleI].split("/")[-1].split("\\")[-1]
     rdfile=open("data/%s.rdf"%(SamFileName),"w")
     print("##Sample:%s"%SampleName,end="",file=rdfile)
-    print("\n##SampleReadCount:%s"%SampleReadCount,end="",file=rdfile)
+    print("\n##SampleReadCount:%s\n##WindowSize:%s"%(SampleReadCount,g.RDWindowSize),end="",file=rdfile)
     for c in mygenome.Contigs:
         print("\n#%s %s"%(c.Name,c.Length),end="",file=rdfile)
         for j in range(len(c.RDWindows[SampleI])):

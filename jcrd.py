@@ -125,6 +125,7 @@ if __name__ == "__main__":
         SampleNames=[]
 
         for i in range(len(g.SamplePaths)):
+            print(gettime()+"Reading %s..."%(g.SamplePaths[i]),file=sys.stderr)
             if g.SamplePaths[i].split(".")[-1]=="rdf":
                 readRDData(mygenome,SampleNames,g.SamplePaths[i])
                 #OccurredWindowsN=len(RDWindows[0])
@@ -153,6 +154,7 @@ if __name__ == "__main__":
             if g.WriteRDData:
                 print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
                 writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount)
+                print(gettime()+"Stored rd data for %s."%(SampleNames[-1]),file=sys.stderr)
             SampleIndex+=1
         if g.WriteRDDataOnly:
             exit(0)
