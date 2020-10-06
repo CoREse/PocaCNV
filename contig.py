@@ -8,6 +8,10 @@ class Contig:
         self.SampleNames=[]
         self.MixedRDRs=None
         self.RDWindowStandards=None
+    
+    def genVacant(self):#gen with no sample
+        new=Contig(self.Name,self.Length)
+        return new       
 
     def addSample(self,name=""):
         self.RDWindows.append(array("f",[0]*self.Length))
@@ -32,6 +36,25 @@ class Genome:
         self.SampleN=0
         self.RefID=[]
     
+    '''
+    def duplicate(self):
+        new=Genome()
+        new.Name=self.Name
+        new.Contigs=self.Contigs.copy()
+        new.Index=self.Index.copy()
+        new.SampleNames=self.SampleNames.copy()
+        new.SampleN=self.SampleN
+        new.RefID=self.RefID.copy()
+        return new'''
+    def genVacant(self):#gen with no sample
+        new=Genome()
+        new.Name=self.Name
+        for c in self.Contigs:
+            new.Contigs.append(c.genVacant())
+        new.Index=self.Index.copy()
+        new.RefID=self.RefID.copy()
+        return new
+
     def getRefID(self,ContigID):
         return RefID[ContigID]
     

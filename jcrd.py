@@ -12,6 +12,7 @@ from report import *
 from joint import uniformlyCombine
 import json
 import multiprocessing as mp
+from rdread import *
 
 import os
 import psutil
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     mp.set_start_method("spawn")
     g=globals
     #parameters
-    g.WriteRDData=False
+    #g.WriteRDData=False
     g.WriteRDDataOnly=False
     g.WriteMixedRDData=False
     g.Contigs=set()#if not vacant, contain only those contigs
@@ -32,16 +33,20 @@ if __name__ == "__main__":
     #g.ExcludeRegionsFileName="data/mdust-v28-p1.bed"
     #g.ExcludeRegionsFileName="data/exclusion_regions.txt"
 
+    g.WriteRDDataTo=None
+
     g.ReferencePath=None
     g.SamplePaths=[]
+    g.ThreadNR=None
     def usage():
         print("""python3 jcrd [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
     Arguments:
         -T,--Reference FILENAME   give referencefile(fasta)(str)
-        -W                        Write RD data
+        -WT            PATH       Write all RD data also to PATH
         -WO                       Write RD data only(no calling)
         -C             ContigName Contain (only) contig, can be used multiple times(str)
         -J,-j          ThreadNum  Thread number(int)
+        -JR            ThreadNum  Thread number for reading sam files, default same as threadnum
         -WS            Size       WindowSize(int)
         -WM                       Write Mixed RD data and other data
         -LC            FILENAME   Load candidates(include all data) from dumped file(str)
@@ -56,8 +61,9 @@ if __name__ == "__main__":
                 if a=='-T' or a=="--Reference":
                     g.ReferencePath=sys.argv[i+1]
                     i+=1
-                elif a=='-W':
-                    g.WriteRDData=True
+                elif a=='-WT':
+                    g.WriteRDDataTo=sys.argv[i+1]
+                    i+=1
                 elif a=='-WO':
                     g.WriteRDData=True
                     g.WriteRDDataOnly=True
@@ -68,6 +74,9 @@ if __name__ == "__main__":
                     i+=1
                 elif a=='-J' or a=='-j':
                     g.ThreadN=int(sys.argv[i+1])
+                    i+=1
+                elif a=='-JR':
+                    g.ThreadNR=int(sys.argv[i+1])
                     i+=1
                 elif a=='-WS':
                     g.RDWindowSize=int(sys.argv[i+1])
@@ -84,8 +93,10 @@ if __name__ == "__main__":
                 print(e,file=sys.stderr)
                 usage()
             i+=1
-        if g.WriteRDDataOnly:
-            g.ThreadN=1
+        #if g.WriteRDDataOnly:
+        #    g.ThreadN=1
+        if g.ThreadNR==None:
+            g.ThreadNR=g.ThreadN
         if g.ReferencePath==None or len(g.SamplePaths)==0:
             usage()
 
@@ -111,6 +122,7 @@ if __name__ == "__main__":
         c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/globals.RDWindowSize)+(1 if ReferenceFile.lengths[tid]%globals.RDWindowSize!=0 else 0))
         mygenome.RefID.append(tid)
         mygenome.append(c)
+    ReferenceFile.close()
     RefLength=PosCount
     print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
     print(gettime()+"Reading samples...",file=sys.stderr)
@@ -124,37 +136,16 @@ if __name__ == "__main__":
         UnmappedCount=0
         SampleNames=[]
 
-        for i in range(len(g.SamplePaths)):
-            print(gettime()+"Reading %s..."%(g.SamplePaths[i]),file=sys.stderr)
-            if g.SamplePaths[i].split(".")[-1]=="rdf":
-                readRDData(mygenome,SampleNames,g.SamplePaths[i])
-                #OccurredWindowsN=len(RDWindows[0])
-                print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
-            else:
-                SamFile=pysam.AlignmentFile(g.SamplePaths[i],"rb",reference_filename=g.ReferencePath)
-                Name=SamFile.header["RG"][0]["SM"]
-                SampleNames.append(Name)
-                mygenome.addSample(SampleNames[-1])
-                ReadCount=0
-                for read in SamFile:
-                    ReadCount+=1
-                    read: pysam.AlignedSegment
-                    if read.is_unmapped:
-                        UnmappedCount+=1
-                        ReadCount+=1#Unmapped reads also count(to accurately measure the coverage)
-                    else:
-                        TheContig=mygenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
-                        if TheContig==None:
-                            continue
-                        TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/globals.RDWindowSize)]+=1
-                        ReadCount+=1
-                SamFile.close()
-                g.SampleReadCount.append(ReadCount)
-                print(gettime()+"Sample %s read. %s"%(SampleNames[-1],getMemUsage()),file=sys.stderr)
-            if g.WriteRDData:
-                print(gettime()+"Storing rd data for %s..."%(SampleNames[-1]),file=sys.stderr)
-                writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount)
-                print(gettime()+"Stored rd data for %s."%(SampleNames[-1]),file=sys.stderr)
+        RDFPaths=readRDDataAndSaveRDF(mygenome,g.SamplePaths)#return RDF SamplePaths
+        if g.WriteRDDataOnly:
+            exit(0)
+        for i in range(len(RDFPaths)):
+            print(gettime()+"Loading from %s..."%(RDFPaths[i]),file=sys.stderr)
+            readRDData(mygenome,SampleNames,RDFPaths[i])
+            if g.WriteRDDataTo!=None:
+                print(gettime()+"Storing rd data for %s to %s..."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
+                writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount, g.RDWindowSize, g.SamplePaths[i],g.WriteRDDataTo)
+                print(gettime()+"Stored rd data for %s to %s."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
             SampleIndex+=1
         if g.WriteRDDataOnly:
             exit(0)
@@ -202,7 +193,7 @@ if __name__ == "__main__":
 
         if g.WriteMixedRDData:
             print(gettime()+"Writing mixed rdrs data...",file=sys.stderr)
-            writeMixedRDData(mygenome,ReferenceFile,g.SampleNames)
+            writeMixedRDData(mygenome,g.SampleNames)
             OtherData={}
             OtherData["RDWindowStandards"]={}
             OtherData["Segmentation"]={}
@@ -271,6 +262,7 @@ if __name__ == "__main__":
         AllData=pickle.dump(AllData,AllDataFile)
         AllDataFile.close()
     reportVCFHeader(sys.stdout,mygenome)
+    ReferenceFile=pysam.FastaFile(g.ReferencePath)
     for i in range(len(mygenome)):
         SVs=[]
         print(gettime()+"Calling CNV for %s"%mygenome[i].Name,file=sys.stderr)

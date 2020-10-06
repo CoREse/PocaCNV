@@ -673,14 +673,18 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
 import pysam
 def writeRDData(mygenome,SampleNames,SampleReadCount):
     for i in range(len(SampleNames)):
-        writeSampleRDData(mygenome,SampleNames[i],i,SampleReadCount[i])
+        writeSampleRDData(mygenome,SampleNames[i],i,SampleReadCount[i],g.RDWindowSize,g.SamplePaths[i])
     return
 
-def writeSampleRDData(mygenome, SampleName, SampleI, SampleReadCount):
-    SamFileName=g.SamplePaths[SampleI].split("/")[-1].split("\\")[-1]
-    rdfile=open("data/%s.rdf"%(SamFileName),"w")
+def getRDFPath(SamPath,Path="data"):
+    SamFileName=SamPath.split("/")[-1].split("\\")[-1]
+    return "%s/%s.rdf"%(Path,SamFileName)
+
+def writeSampleRDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize, SamplePath, Path="data"):
+    #SamFileName=g.SamplePaths[SampleI].split("/")[-1].split("\\")[-1]
+    rdfile=open(getRDFPath(SamplePath,Path),"w")
     print("##Sample:%s"%SampleName,end="",file=rdfile)
-    print("\n##SampleReadCount:%s\n##WindowSize:%s"%(SampleReadCount,g.RDWindowSize),end="",file=rdfile)
+    print("\n##SampleReadCount:%s\n##WindowSize:%s"%(SampleReadCount,WindowSize),end="",file=rdfile)
     for c in mygenome.Contigs:
         print("\n#%s %s"%(c.Name,c.Length),end="",file=rdfile)
         for j in range(len(c.RDWindows[SampleI])):
@@ -688,8 +692,8 @@ def writeSampleRDData(mygenome, SampleName, SampleI, SampleReadCount):
     rdfile.close()
     return
 
-def writeMixedRDData(mygenome,ReferenceFile,SampleNames):
-    ReferenceFile:pysam.FastaFile
+def writeMixedRDData(mygenome,SampleNames):
+    #ReferenceFile:pysam.FastaFile
     for i in range(len(SampleNames)):
         SamFileName=g.SamplePaths[i].split("/")[-1].split("\\")[-1]
         rdfile=open("data/%s.mrd"%(SamFileName),"w")
