@@ -92,7 +92,7 @@ class Genome:
         self.SampleN+=1
     def changeSampleName(self, Index, Name):
         for c in self.Contigs:
-            c.changeSampleName(self, Index, Name)
+            c.changeSampleName(Index, Name)
         self.SampleNames[Index]=Name
     def __len__(self):
         return len(self.Contigs)

@@ -64,6 +64,8 @@ if __name__ == "__main__":
                 elif a=='-WT':
                     g.WriteRDDataTo=sys.argv[i+1]
                     i+=1
+                elif a=='-W':
+                    print("WARNING: -W is obsolete(all rdf is writen by default), try -WT",file=sys.stderr)
                 elif a=='-WO':
                     g.WriteRDData=True
                     g.WriteRDDataOnly=True

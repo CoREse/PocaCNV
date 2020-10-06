@@ -29,6 +29,7 @@ def readRDDataAndSaveRDF(thegenome, SamplePaths):
             for i in range(len(SAMPaths)):
                 readSamToRDF(thegenome.genVacant(),SAMPaths[i],g.ReferencePath,g.RDWindowSize)
             print(gettime()+"All SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
+    return RDFPaths
 
 def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
     print(gettime()+"Reading reads from %s..."%(FilePath),file=sys.stderr)
