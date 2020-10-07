@@ -496,7 +496,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     RDWindowAverages=[0]*WindowsN
     PPRDWindowAverages=[0]*WindowsN
     PP=0.9
-    RDWindowMedians=[0]*WindowsN
+    #RDWindowMedians=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     g.RDWindowSums=RDWindowSums
     SampleN=len(RDWindows)
@@ -549,7 +549,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 SampleSums[j]+=RDWindows[j][i]
                 WindowSamples[j]=(RDWindows[j][i],j)
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
-            RDWindowMedians[i]=statistics.median(WindowSamples)
+            #RDWindowMedians[i]=statistics.median(WindowSamples)
             WindowSamples.sort(key=lambda s:s[0])
             De=int(SampleN*0.5*(1-PP))
             for s in WindowSamples[De:SampleN-De]:
