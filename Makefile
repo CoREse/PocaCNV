@@ -46,6 +46,8 @@ qtestc:
 	time python3 jcrd.py -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/test*.cram -W >data/qtestc.vcf
 wotest:
 	time python3 jcrd.py -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/test*.cram -WO
+debug:
+	bash debugs/debug.sh
 bench:
 	python3 benchmark.py
 

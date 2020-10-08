@@ -16,6 +16,11 @@ for fn in sys.argv[3:]:
                     if not first:
                         print("\n",end="",file=nf)
                     first=False
+                    sl=line[2:].split(":")
+                    if sl[1]=="WindowSize":
+                        OWS=int(sl[2])
+                        print("##WindowSize:%s"%(OWS*mul),end="",file=nf)
+                        continue
                     print(line.strip(),end="",file=nf)
                     continue
                 if ConI%mul!=0:
