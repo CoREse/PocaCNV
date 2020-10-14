@@ -1,4 +1,4 @@
-
+#Written by CRE. 20201013.
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
         Overlap=min(E2-B1,E1-B1)
