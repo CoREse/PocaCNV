@@ -5,7 +5,7 @@ import sys
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
         Overlap=min(E2-B1,E1-B1)
-    elif E1>=B2 and E1<=B2:
+    elif E1>=B2 and E1<=E2:
         Overlap=E1-B2
     elif B2>=B1 and B2<=E1:#1 covers 2
         Overlap=E2-B2

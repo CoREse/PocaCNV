@@ -2,7 +2,7 @@
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
         Overlap=min(E2-B1,E1-B1)
-    elif E1>=B2 and E1<=B2:
+    elif E1>=B2 and E1<=E2:
         Overlap=E1-B2
     elif B2>=B1 and B2<=E1:#1 covers 2
         Overlap=E2-B2
@@ -216,7 +216,7 @@ class VariantRecords:
                 RSamples[SN]=None
         return Result
     
-    def interpret(self,maresult):
+    def interpret(self,maresult,PR=False):
         OtherN=0
         SelfN=0
         Matched=0
@@ -257,11 +257,21 @@ class VariantRecords:
                     elif RSamples[SN][i][1].Type.upper()=="DUP":
                         MatchedDup+=1
                         SelfMatchedDup+=len(RSamples[SN][i][0])
-        return "All: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDel: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDup: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)"%(\
+        Out= "All: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDel: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDup: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)"%(\
             Matched/OtherN if OtherN!=0 else 0,Matched,OtherN,SelfMatched/SelfN if SelfN!=0 else 0,SelfMatched,SelfN\
                 ,MatchedDel/OtherDelN if OtherDelN!=0 else 0,MatchedDel,OtherDelN,SelfMatchedDel/SelfDelN if SelfDelN!=0 else 0,SelfMatchedDel,SelfDelN\
                     ,MatchedDup/OtherDupN if OtherDupN!=0 else 0,MatchedDup,OtherDupN,SelfMatchedDup/SelfDupN if SelfDupN!=0 else 0,SelfMatchedDup,SelfDupN
                 )#PPV:positive predictive value,1-FDR
+        if PR:
+            for SN in Other.Samples.keys():
+                if RSamples[SN]!=None:
+                    for i in range(len(RSamples[SN])):
+                        Out+="\nGS:%s..."%RSamples[SN][i][1]
+                        for j in range(len(RSamples[SN][i][0])):
+                            if j!=0:
+                                Out+=","
+                            Out+="%s"%RSamples[SN][i][0][j]
+        return Out
     
     def parseVcfCNV(self,filename,contigs=None,samples=None):
         vcf=pysam.VariantFile(filename,"r")

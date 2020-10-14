@@ -1,12 +1,14 @@
-from benchmark_lib import *
+from benchlib import *
 import sys
+
 
 percentage=0.5
 near=-1
 Contigs=None
-Contigs=["22"]
+Contigs=None#["22"]
 Samples=None
-Samples=["HG00403"]
+Samples=None#["HG00403"]
+SamplesFile=None
 PrintResult=True
 PrintOuts=False
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/HG00514.BIP-unified.vcf.gz'
@@ -35,28 +37,26 @@ if len(sys.argv)>1:
         elif a=='-S':
             Samples=[sys.argv[i+1]]
             i+=1
+        elif a=='-SF':
+            SamplesFile=sys.argv[i+1]
+            i+=1
         elif a=="-PO":
             PrintOuts=True
         else:
             MyF=a
         i+=1
-myout=parse_my(MyF,Contigs,Samples,format=Format)
-goldstandard=parse_vcf(GSF,Contigs,Samples)
-if PrintOuts:
-    print("goldstandards:")
-    for gs in goldstandard:
-        print("%s"%gs)
-    print("myouts:")
-    for m in myout:
-        print("%s"%m)
-presult=calculate_sensitivity_by_percent(goldstandard,myout,percentage,near)
-calculate_fdr_by_percent(goldstandard,myout,percentage,near)
-sresult=calculate_sensitivity_by_inclusion(goldstandard,myout)
-calculate_fdr_by_inclusion(goldstandard,myout)
-if PrintResult:
-    print("Results by percent:")
-    for r in presult:
-        print(r)
-    print("Results by inclution:")
-    for r in sresult:
-        print(r)
+
+if SamplesFile!=None:
+    Samples=[]
+    SF=open(SamplesFile,"r")
+    for line in SF:
+        if line.strip()!="":
+            Samples.append(line.strip())
+    SF.close()
+
+Gold=VariantRecords("Gold")
+Gold.parseVcfCNV(GSF,Contigs,Samples)
+Test=VariantRecords("Test")
+Test.parseVcfCNV(MyF,Contigs,Samples)
+
+print(Test.interpret(Test.matchAll(Gold),PrintResult))
