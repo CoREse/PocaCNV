@@ -273,7 +273,7 @@ class VariantRecords:
                             Out+="%s"%RSamples[SN][i][0][j]
         return Out
     
-    def parseVcfCNV(self,filename,contigs=None,samples=None):
+    def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0):
         vcf=pysam.VariantFile(filename,"r")
         result=[]
         included={}
@@ -300,6 +300,9 @@ class VariantRecords:
                         except:
                             pass
             try:
+                Length=End-record.pos
+                if Length<MinLength:
+                    continue
                 chrom=record.chrom
                 #if len(record.chrom)<3 and (int(record.chrom[:2])<23 or record.chrom.upper()=="X" or record.chrom.upper()=="Y"):
                 #        chrom="chr"+record.chrom
