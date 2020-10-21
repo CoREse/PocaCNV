@@ -15,8 +15,8 @@ Manager=None
 SampleReadCount=[]
 SequenceDepthRatio=[]
 RDWindowSums=None
-AllReadCount=0
-StatisticalRDWindowSums=None
+AllReadCount=None
+StatisticalRDWindowSums=None#The middle pp part
 StatisticalReadCounts=None
 class Parameters:
     ScoreThreshold=0.99

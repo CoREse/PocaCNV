@@ -40,12 +40,17 @@ qtest:
 	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/rd*chr22.cram.rdf >data/qtest.vcf
 qtest100:
 	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/100rd*chr22.cram.rdf -WS 10000 >data/qtest100.vcf
+qtest100t1:
+	time python3 jcrd.py -J 1 -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/100rd*chr22.cram.rdf -WS 10000 >data/qtest100.vcf
 qtestco:
 	time python3 jcrd.py -C chr22 -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa -LC data/AllData.data data/rd*chr22.cram.rdf >data/qtest.vcf
 qtestc:
 	time python3 jcrd.py -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/test*.cram -W >data/qtestc.vcf
 wotest:
 	time python3 jcrd.py -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/test*.cram -WO
+qtest108:
+	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 2000 ~/data/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
+	python3 benchmark.py -C 22 data/qtest108.vcf
 debug:
 	bash debugs/debug.sh
 bench:

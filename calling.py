@@ -11,6 +11,14 @@ from readdepth import cn2likely
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
 
+import CGetRDScores
+def getRDScores(Candidates,TheContig,ThreadN=1):
+    Scores=[]
+    for i in range(len(Candidates)):
+        Scores.append(getScore(Candidates[i],TheContig))
+    #Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,g.ThreadN)
+    return Scores
+
 def getRDScore(C, TheContig):
     Score=0
     P=1

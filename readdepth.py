@@ -23,9 +23,9 @@ def cn2filter(Interval,TheContig,Confidence=None):
         return False
     return True
 
-def cn2likely(Interval,TheContig,CN2Standards=None):
+def cn2likely(Interval,TheContig,SP=None):
     if Interval.mu==None:
-        mu,mus=Interval.calcMuMus(TheContig,CN2Standards)
+        mu,mus=Interval.calcMuMus(TheContig,SP)
     else:
         mu,mus=(Interval.mu,Interval.mus)
     cd=poisson.cdf(mus,mu)
@@ -33,6 +33,61 @@ def cn2likely(Interval,TheContig,CN2Standards=None):
 def mulikely(mu,mus):
     cd=poisson.cdf(mus,mu)
     return min(cd,1-cd)
+
+def getSampleSum(TheContig, SampleI, WBegin, WEnd):
+    SampleRD=0
+    for j in range(WBegin,WEnd):
+        SampleRD+=TheContig.RDWindows[SampleI][j]
+    return SampleRD
+
+def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8):#get rd sum and sample read count sum
+    SRS=0
+    SRC=0
+    if WEnd<=WBegin:
+        return (0,0)
+    #start with middle p
+    SampleN=len(TheContig.SampleNames)
+    SampleRDs=[0]*SampleN
+    SamplePs=[0]*SampleN
+    for i in range(SampleN):
+        SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
+        SamplePs[i]=SampleRDs[i]/g.SampleReadCount[i]
+    SamplePs.sort()
+    EstimatedP=SamplePs[int(SampleN/2)]
+    SRS=EstimatedP
+    SRC=1
+    if SampleN%2==0:
+        EstimatedP+=SamplePs[int(SampleN/2)-1]
+        EstimatedP/=2
+    RemovedSet=set()
+    LastP=0
+    SampleSTDs=[0]*SampleN
+    while LastP!=EstimatedP:
+        RemovedSet=set()
+        for i in range(SampleN):
+            SampleSTDs[i]=EstimatedP*g.SampleReadCount[i]
+            if abs(SampleRDs[i]-SampleSTDs[i])>NSD*SampleSTDs[i]**0.5:
+                RemovedSet.add(i)
+        if len(RemovedSet)>SampleN*MinimumTake:
+            break
+        SRS=0
+        SRC=0
+        for i in range(SampleN):
+            if i not in RemovedSet:
+                SRS+=SampleRDs[i]
+                SRC+=g.SampleReadCount[i]
+        LastP=EstimatedP
+        EstimatedP=SRS/SRC
+    #the efficient way
+    '''for i in range(WBegin,WEnd):
+        SRS+=g.StatisticalRDWindowSums[i]
+        SRC+=g.StatisticalReadCounts[i]
+    SRC/=WEnd-WBegin'''
+    #the efficient way 2
+    '''for i in range(WBegin,WEnd):
+        SRS+=g.RDWindowSums[i]
+    SRC=g.AllReadCount'''
+    return (SRS,SRC)
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD,TheContig=None,RDWindowSize=None):#multiprocessing will make g.RDWindowSize to default value
@@ -66,7 +121,22 @@ class RDInterval:
             self.SupportedSVType=2
     def setContig(TheContig):
         self.TheContig=TheContig
-    def calcMuMus(self,TheContig=None,RDS=None,RDSAcc=None):
+    def calcMuMus(self,TheContig=None,SP=None):#SP[0]=RDSum, SP[1]=Sample Read Count Sum(g.AllReadCount)
+        if TheContig==None:
+            TheContig=self.TheContig
+        if TheContig==None:
+            raise Exception("No contig given.")
+        if SP==None:
+            SP=getSP(TheContig,self.WBegin,self.WEnd)
+        mu=SP[0]*(g.SampleReadCount[self.Sample]/SP[1])
+        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
+        mu=int(mu+0.5)
+        mus=int(mus+0.5)
+        self.mu=mu
+        self.mus=mus
+        return mu,mus
+
+    def calcMuMusOld(self,TheContig=None,RDS=None,RDSAcc=None):
         if TheContig==None:
             TheContig=self.TheContig
         if TheContig==None:
@@ -150,11 +220,28 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,RDWindowSize=None):
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,None,RDWindowSize))
         Last=End
     CZInts=scanConZero(SampleMRDRs)
+    SampleIntervals.sort(key=lambda I:I.WBegin)
     for I in CZInts:
-        SampleIntervals.append(RDInterval(SampleI,I[0][0],I[0][1],I[1],None,RDWindowSize))
-        SampleIntervals.sort(key=lambda I:I.WBegin)
+        TempInt=RDInterval(SampleI,I[0][0],I[0][1],I[1],None,RDWindowSize)
+        findNBindOrInsert(TempInt,SampleIntervals)
+    SampleIntervals.sort(key=lambda I:I.WBegin)
     del SampleMRDRs
     return SampleIntervals
+
+def findNBindOrInsert(Int,Ints):#Ints should be sorted
+    BindPercentage=0.8
+    Binded=False
+    IntLength=Int.WEnd-Int.WBegin
+    IntDis=IntLength*(1-BindPercentage)
+    for I in Ints:
+        Over=calcOverlap(Int.WBegin,Int.WEnd,I.WBegin,I.WEnd)
+        if Over<0 and Int.WBegin-I.WBegin>IntDis:
+            break
+        if Over/(Int.WEnd-Int.WBegin)>=BindPercentage and Over/(I.WEnd-I.WBegin)>=BindPercentage:
+            I.WBegin=int((Int.WBegin+I.WBegin)/2)
+            Binded=True
+    if not Binded:
+        Ints.append(Int)
 
 def makeRDIntervals(MixedRDRs,TheContig=None):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
@@ -225,7 +312,7 @@ def dnacopy_cbs(data):
         if not first:
             datastring+=","
         first=False
-        datastring+="%.7s"%(math.log2(d/2.0 if d!=0 else sys.float_info.min))
+        datastring+="%.7s"%(d)#math.log2(d/2.0 if d!=0 else sys.float_info.min))
     robjects.r("rm(list = ls(all.names=TRUE))")
     robjects.r("rddata<-data.frame(mrd=c(%s))"%datastring)
     global script
@@ -471,9 +558,9 @@ def unifyRD(RDWindows):
             RDWindows[s][i]/=g.SequenceDepthRatio[s]
 
 def getNormalRD(SampleI,WindowI):
-    return g.StatisticalRDWindowSums[WindowI]*(g.SampleReadCount[SampleI]/g.StatisticalReadCounts[WindowI])
+    return 0 if g.StatisticalReadCounts[WindowI]==0 else g.StatisticalRDWindowSums[WindowI]*(g.SampleReadCount[SampleI]/g.StatisticalReadCounts[WindowI])
 
-def getIntervalNormalRD(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a window interval
+def getIntervalNormalRDOld(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a window interval
     SampleN=len(TheContig.RDWindows)
     WindowN=len(TheContig.RDWindows[0])
     SampleSums=[]
@@ -490,6 +577,10 @@ def getIntervalNormalRD(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a wind
         Sum+=s[0]
         StatReadCount+=g.SampleReadCount[s[1]]
     return Sum*(g.SampleReadCount[SampleI]/StatReadCount)
+
+def getIntervalNormalRD(TheContig,SampleI,WindowB,WindowE):
+    SP=getSP(TheContig,WBegin,WEnd)
+    return g.SampleReadCount[SampleI]/SP[1]*SP[0]
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
@@ -547,14 +638,17 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             for j in range(SampleN):
                 RDWindowSums[i]+=RDWindows[j][i]
                 SampleSums[j]+=RDWindows[j][i]
-                WindowSamples[j]=(RDWindows[j][i],j)
+                #WindowSamples[j]=(RDWindows[j][i],j)
             RDWindowAverages[i]=RDWindowSums[i]/SampleN
             #RDWindowMedians[i]=statistics.median(WindowSamples)
-            WindowSamples.sort(key=lambda s:s[0])
-            De=int(SampleN*0.5*(1-PP))
-            for s in WindowSamples[De:SampleN-De]:
-                StatisticalRDWindowSums[i]+=s[0]
-                StatisticalReadCounts[i]+=g.SampleReadCount[s[1]]
+            #WindowSamples.sort(key=lambda s:s[0])
+            #De=int(SampleN*0.5*(1-PP))
+            SP=getSP(TheContig,i,i+1)
+            StatisticalRDWindowSums[i]=SP[0]
+            StatisticalReadCounts[i]=SP[1]
+            #for s in WindowSamples[De:SampleN-De]:
+            #    StatisticalRDWindowSums[i]+=s[0]
+            #    StatisticalReadCounts[i]+=g.SampleReadCount[s[1]]
             #PPRDWindowAverages[i]=statistics.mean(WindowSamples[De:SampleN-De])
         g.StatisticalRDWindowSums=StatisticalRDWindowSums
         g.StatisticalReadCounts=StatisticalReadCounts
@@ -663,7 +757,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     
     #partition(MixedRDRs)
 
-    RDICandidates=makeRDICandidates(extendEvidences(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
+    RDICandidates=makeRDICandidates(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)))
     SegSD=False
     if SegSD:
         SDCandidates=getSDCandidates(TheContig)

@@ -73,12 +73,13 @@ def getTidByCord(Cordinate):
 
 #Candidate can have evidences from different sapmles, evidence will only be one sample's evidence
 class Candidate:
-    CombinePercentage=0.9
+    CombinePercentage=0.97
     CombineRange=300
-    RangePercentage=0.1
+    RangePercentage=0.03
     MinRange=100
     MaxRange=10000
     CombineMode=2#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other, 2: like one, but with flexible CombineRange due to length
+    AveBreak=False
     def __init__(self,Es=[]):
         self.SVType=None#0: deletion, 1: insertion, 2:dup, 3:CNV
         self.Evidences=Es
@@ -93,15 +94,32 @@ class Candidate:
         self.CombineRange=None
     
     def calculateSpread(self):
+        SumLeft=0
+        SumRight=0
+        BN=0
         for e in self.Evidences:
             self.Begin, self.End=(min(self.Begin,e.Begin),max(self.End,e.End))
             if e.Type==0:
                 for pi in e.Data:
-                    self.BreakLeft=max(self.BreakLeft,pi.LEnd)
-                    self.BreakRight=min(self.BreakRight,pi.RStart)
+                    if Candidate.AveBreak:
+                        SumLeft+=pi.LEnd
+                        SumRight+=pi.RStart
+                        BN+=1
+                    else:
+                        self.BreakLeft=max(self.BreakLeft,pi.LEnd)
+                        self.BreakRight=min(self.BreakRight,pi.RStart)
             if e.Type==1:
+                if Candidate.AveBreak:
+                    SumLeft+=e.Data.Begin
+                    SumRight+=e.Data.End
+                    BN+=1
+                else:
                     self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
                     self.BreakRight=min(self.BreakRight,e.Data.End)
+            if Candidate.AveBreak:
+                self.BreakLeft=SumLeft/BN
+                self.BreakRight=SumRight/BN
+
         if Candidate.CombineMode==1 or Candidate.CombineMode==2:
             self.BeginRange=(self.Begin,self.Begin)
             self.EndRange=(self.End,self.End)

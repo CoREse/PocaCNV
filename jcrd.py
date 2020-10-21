@@ -281,8 +281,7 @@ if __name__ == "__main__":
             #for C in Candidates[i]:
             #    Args.append((C,mygenome[i]))
             #Scores=pool.starmap(getRDScore,Args)
-            import CGetRDScores
-            Scores=CGetRDScores.CGetRDScores(Candidates[i],mygenome[i],g.ThreadN)
+            Scores=getRDScores(Candidates[i],mygenome[i],g.ThreadN)
             print(gettime()+"Scores get. "+getMemUsage(),file=sys.stderr)
             #delPool()
             #pool.terminate()
