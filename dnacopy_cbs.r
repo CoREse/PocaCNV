@@ -9,6 +9,7 @@ library(DNAcopy)
 
 rddata$chr <- 1
 rddata$loc <- 1:nrow(rddata)
+set.seed(0)#to avoid randomization
 
 segdata <- segment(smooth.CNA(CNA(rddata[1],rddata$chr,rddata$loc,presorted=TRUE)),verbose=0)
 
