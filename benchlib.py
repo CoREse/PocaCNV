@@ -1,4 +1,5 @@
 #Written by CRE. 20201013.
+import sys
 def calcOverlap(B1,E1,B2,E2):
     if B1<=E2 and B1>=B2:
         Overlap=min(E2-B1,E1-B1)
@@ -273,11 +274,12 @@ class VariantRecords:
                             Out+="%s"%RSamples[SN][i][0][j]
         return Out
     
-    def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0):
+    def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0,MaxAF=1):
         vcf=pysam.VariantFile(filename,"r")
         result=[]
         included={}
         includedSamples={}
+        NoAFInfoWarn=False
         if contigs!=None:
             for c in contigs:
                 included[c]=True
@@ -311,6 +313,8 @@ class VariantRecords:
                         continue
                 CNAlts=[1]
                 tempRecord=Record(chrom,record.pos,End)
+                AFs=[1]
+                Ai=0
                 for a in record.alts:
                     if "<CN" in a:
                         CNAlts.append(int(a[a.find("<CN")+3:-1]))
@@ -320,6 +324,13 @@ class VariantRecords:
                         CNAlts.append(2)
                     else:
                         CNAlts.append(1)
+                    AF=1
+                    try:
+                        AF=record.info["AF"][Ai]
+                    except:
+                        NoAFInfoWarn=True
+                    AFs.append(AF)
+                    Ai+=1
                 try:
                     for s in record.samples:
                         SampleName=record.samples[s].name
@@ -329,6 +340,8 @@ class VariantRecords:
                                 if record.info["SVTYPE"]=="DEL" or record.info["SVTYPE"]=="DUP" or record.info["SVTYPE"]=="CNV":
                                     CN=CNAlts[record.samples[s].allele_indices[0]]+CNAlts[record.samples[s].allele_indices[1]]
                                 if CN==2:
+                                    continue
+                                if AFs[record.samples[s].allele_indices[0]]>MaxAF and AFs[record.samples[s].allele_indices[1]]>MaxAF:
                                     continue
                                 else:
                                     if CN<2:
@@ -347,4 +360,6 @@ class VariantRecords:
             self.Samples[SN].forceSort()
             self.Samples[SN].forceIndex()
         vcf.close()
+        if MaxAF!=1 and NoAFInfoWarn:
+            print("[WARN] There are alleles don't have AF info!",file=sys.stderr)
         return self.Records
