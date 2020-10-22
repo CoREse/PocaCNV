@@ -12,6 +12,7 @@ SamplesFile=None#one sample name per line
 PrintResult=True
 PrintOuts=False
 MinLength=0#Minimum Variant Length
+MaxAF=1#Max allele frequency, only apply for gold standard
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/HG00514.BIP-unified.vcf.gz'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/ALL_Illumina_Integrate_20170206.vcf.gz'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/delly.bcf'
@@ -44,6 +45,9 @@ if len(sys.argv)>1:
         elif a=='-ML':
             MinLength=int(sys.argv[i+1])
             i+=1
+        elif a=='-MAF':
+            MaxAF=float(sys.argv[i+1])
+            i+=1
         elif a=="-PO":
             PrintOuts=True
         else:
@@ -59,7 +63,7 @@ if SamplesFile!=None:
     SF.close()
 
 Gold=VariantRecords("Gold")
-Gold.parseVcfCNV(GSF,Contigs,Samples,MinLength)
+Gold.parseVcfCNV(GSF,Contigs,Samples,MinLength,MaxAF)
 Test=VariantRecords("Test")
 Test.parseVcfCNV(MyF,Contigs,Samples,MinLength)
 
