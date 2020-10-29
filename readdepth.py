@@ -45,9 +45,10 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8):#get rd sum and sampl
     SRC=0
     if WEnd<=WBegin:
         return (0,0)
-    #start with middle p
     SampleN=len(TheContig.SampleNames)
     SampleRDs=[0]*SampleN
+    #start with middle p
+    #this seems better
     SamplePs=[0]*SampleN
     for i in range(SampleN):
         SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
@@ -59,6 +60,12 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8):#get rd sum and sampl
     if SampleN%2==0:
         EstimatedP+=SamplePs[int(SampleN/2)-1]
         EstimatedP/=2
+    #start with whole
+    '''for i in range(SampleN):
+        SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
+        SRS+=SampleRDs[i]
+        SRC+=g.SampleReadCount[i]
+    EstimatedP=SRS/SRC'''
     RemovedSet=set()
     LastP=0
     SampleSTDs=[0]*SampleN
