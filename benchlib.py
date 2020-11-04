@@ -204,6 +204,10 @@ class VariantRecords:
         except Exception:
             return None
     
+    def printSample(self,SampleName):
+        for v in self.Samples[SampleName].Variants:
+            print(v)
+    
     def matchAll(self,Other,Mode=0.8):#other as standard
         Result={}
         Result["Samples"]={}

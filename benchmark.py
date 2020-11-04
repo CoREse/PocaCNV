@@ -11,6 +11,7 @@ Samples=None#["HG00403"]
 SamplesFile=None#one sample name per line
 PrintResult=True
 PrintOuts=False
+PrintSample=None
 MinLength=0#Minimum Variant Length
 MaxAF=1#Max allele frequency, only apply for gold standard
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/HG00514.BIP-unified.vcf.gz'
@@ -21,7 +22,7 @@ MaxAF=1#Max allele frequency, only apply for gold standard
 GSF='/mnt/c/Users/CRE/Productive/Programming/data/chr22_indels_CHS.recode.vcf'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/Workspace/jc/results/CHS_chr22_hs37d5_nc.vcf'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/delly_hs37d5_HG004xx.bcf'
-MyF="test/512-4_chr22_testcall.txt"
+MyF=[]#"test/512-4_chr22_testcall.txt"
 Format="VCF"
 if len(sys.argv)>1:
     i=1
@@ -50,8 +51,11 @@ if len(sys.argv)>1:
             i+=1
         elif a=="-PO":
             PrintOuts=True
+        elif a=="-PS":
+            PrintSample=sys.argv[i+1]
+            i+=1
         else:
-            MyF=a
+            MyF.append(a)
         i+=1
 
 if SamplesFile!=None:
@@ -64,7 +68,11 @@ if SamplesFile!=None:
 
 Gold=VariantRecords("Gold")
 Gold.parseVcfCNV(GSF,Contigs,Samples,MinLength,MaxAF)
+if PrintSample!=None:
+    Gold.printSample(PrintSample)
+    exit(0)
 Test=VariantRecords("Test")
-Test.parseVcfCNV(MyF,Contigs,Samples,MinLength)
+for i in range(len(MyF)):
+    Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength)
 
 print(Test.interpret(Test.matchAll(Gold),PrintResult))
