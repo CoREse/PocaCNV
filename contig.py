@@ -8,6 +8,14 @@ class Contig:
         self.SampleNames=[]
         self.MixedRDRs=None
         self.RDWindowStandards=None
+        self.ContigSampleReadCounts=[]
+        self.ContigReadCount=None
+        self.SampleReadCount=self.ContigSampleReadCounts
+    
+    def calcContigReadCount(self):
+        self.ContigReadCount=0
+        for rc in self.ContigSampleReadCounts:
+            self.ContigReadCount+=rc
     
     def genVacant(self):#gen with no sample
         new=Contig(self.Name,self.Length)
@@ -16,6 +24,7 @@ class Contig:
     def addSample(self,name=""):
         self.RDWindows.append(array("f",[0]*self.Length))
         self.SampleNames.append(name)
+        self.ContigSampleReadCounts.append(0)
     
     def changeSampleName(self, Index, Name):
         self.SampleNames[Index]=Name
@@ -96,3 +105,6 @@ class Genome:
         self.SampleNames[Index]=Name
     def __len__(self):
         return len(self.Contigs)
+    def calcContigReadCounts(self):
+        for c in self.Contigs:
+            c.calcContigReadCount()

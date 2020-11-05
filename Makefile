@@ -51,6 +51,9 @@ wotest:
 qtest108:
 	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 2000 ~/data/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
 	python3 benchmark.py -C 22 data/qtest108.vcf
+test22:
+	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 100 ~/data/CHS/*.rdf -C 22 > data/test22.vcf
+	python3 benchmark.py -C 22 data/test22.vcf
 debug:
 	bash debugs/debug.sh
 bench:

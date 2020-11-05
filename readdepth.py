@@ -40,39 +40,42 @@ def getSampleSum(TheContig, SampleI, WBegin, WEnd):
         SampleRD+=TheContig.RDWindows[SampleI][j]
     return SampleRD
 
-def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8):#get rd sum and sample read count sum
+def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=False):#get rd sum and sample read count sum
     SRS=0
     SRC=0
     if WEnd<=WBegin:
         return (0,0)
     SampleN=len(TheContig.SampleNames)
     SampleRDs=[0]*SampleN
+    Stat=g
+    if local:
+        Stat=TheContig
     #start with middle p
     #this seems better
-    SamplePs=[0]*SampleN
+    '''SamplePs=[0]*SampleN
     for i in range(SampleN):
         SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
-        SamplePs[i]=SampleRDs[i]/g.SampleReadCount[i]
+        SamplePs[i]=SampleRDs[i]/Stat.SampleReadCount[i]
     SamplePs.sort()
     EstimatedP=SamplePs[int(SampleN/2)]
     SRS=EstimatedP
     SRC=1
     if SampleN%2==0:
         EstimatedP+=SamplePs[int(SampleN/2)-1]
-        EstimatedP/=2
+        EstimatedP/=2'''
     #start with whole
-    '''for i in range(SampleN):
+    for i in range(SampleN):
         SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
         SRS+=SampleRDs[i]
-        SRC+=g.SampleReadCount[i]
-    EstimatedP=SRS/SRC'''
+        SRC+=Stat.SampleReadCount[i]
+    EstimatedP=SRS/SRC
     RemovedSet=set()
     LastP=0
     SampleSTDs=[0]*SampleN
     while LastP!=EstimatedP:
         RemovedSet=set()
         for i in range(SampleN):
-            SampleSTDs[i]=EstimatedP*g.SampleReadCount[i]
+            SampleSTDs[i]=EstimatedP*Stat.SampleReadCount[i]
             if abs(SampleRDs[i]-SampleSTDs[i])>NSD*SampleSTDs[i]**0.5:
                 RemovedSet.add(i)
         if len(RemovedSet)>SampleN*MinimumTake:
@@ -82,7 +85,7 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8):#get rd sum and sampl
         for i in range(SampleN):
             if i not in RemovedSet:
                 SRS+=SampleRDs[i]
-                SRC+=g.SampleReadCount[i]
+                SRC+=Stat.SampleReadCount[i]
         LastP=EstimatedP
         EstimatedP=SRS/SRC
     #the efficient way
@@ -128,14 +131,17 @@ class RDInterval:
             self.SupportedSVType=2
     def setContig(TheContig):
         self.TheContig=TheContig
-    def calcMuMus(self,TheContig=None,SP=None):#SP[0]=RDSum, SP[1]=Sample Read Count Sum(g.AllReadCount)
+    def calcMuMus(self,TheContig=None,SP=None, local=False):#SP[0]=RDSum, SP[1]=Sample Read Count Sum(g.AllReadCount)
         if TheContig==None:
             TheContig=self.TheContig
         if TheContig==None:
             raise Exception("No contig given.")
         if SP==None:
-            SP=getSP(TheContig,self.WBegin,self.WEnd)
-        mu=SP[0]*(g.SampleReadCount[self.Sample]/SP[1])
+            SP=getSP(TheContig,self.WBegin,self.WEnd,local)
+        Stat=g
+        if local:
+            Stat=TheContig
+        mu=SP[0]*(Stat.SampleReadCount[self.Sample]/SP[1])
         mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
         mu=int(mu+0.5)
         mus=int(mus+0.5)
@@ -319,7 +325,8 @@ def dnacopy_cbs(data):
         if not first:
             datastring+=","
         first=False
-        datastring+="%.7s"%(d)#math.log2(d/2.0 if d!=0 else sys.float_info.min))
+        #datastring+="%.7s"%(d)#math.log2(d/2.0 if d!=0 else sys.float_info.min))
+        datastring+="%.7s"%(math.log2(d/2.0 if d!=0 else sys.float_info.min))
     robjects.r("rm(list = ls(all.names=TRUE))")
     robjects.r("rddata<-data.frame(mrd=c(%s))"%datastring)
     global script
@@ -564,8 +571,14 @@ def unifyRD(RDWindows):
         for i in range(len(RDWindows[s])):
             RDWindows[s][i]/=g.SequenceDepthRatio[s]
 
-def getNormalRD(SampleI,WindowI):
+def getNormalRD_overall(TheContig,SampleI,WindowI):
     return 0 if g.StatisticalReadCounts[WindowI]==0 else g.StatisticalRDWindowSums[WindowI]*(g.SampleReadCount[SampleI]/g.StatisticalReadCounts[WindowI])
+
+def getNormalRD_contig(TheContig,SampleI,WindowI):
+    return 0 if g.StatisticalReadCounts[WindowI]==0 else g.StatisticalRDWindowSums[WindowI]*(TheContig.SampleReadCount[SampleI]/g.StatisticalReadCounts[WindowI])
+
+def getNormalRD(TheContig,SampleI,WindowI):
+    return getNormalRD_overall(TheContig,SampleI,WindowI)
 
 def getIntervalNormalRDOld(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a window interval
     SampleN=len(TheContig.RDWindows)
@@ -586,14 +599,23 @@ def getIntervalNormalRDOld(TheContig, SampleI, WindowB, WindowE,PP=0.9):#for a w
     return Sum*(g.SampleReadCount[SampleI]/StatReadCount)
 
 def getIntervalNormalRD(TheContig,SampleI,WindowB,WindowE):
-    SP=getSP(TheContig,WBegin,WEnd)
-    return g.SampleReadCount[SampleI]/SP[1]*SP[0]
+    return getIntervalNormalRD_overall(TheContig,SampleI,WindowB,WindowE)
+
+def getIntervalNormalRD_overall(TheContig,SampleI,WindowB,WindowE):
+    SP=getSP(TheContig,WindowB,WindowE)
+    return 0 if SP[1]==0 else g.SampleReadCount[SampleI]/SP[1]*SP[0]
+
+def getIntervalNormalRD_contig(TheContig,SampleI,WindowB,WindowE):
+    SP=getSP(TheContig,WindowB,WindowE)
+    return 0 if SP[1]==0 else TheContig.ContigSampleReadCounts[SampleI]/SP[1]*SP[0]
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
     PPRDWindowAverages=[0]*WindowsN
     PP=0.9
+    Mean2Adjust=False
+    Smooth=1
     #RDWindowMedians=[0]*WindowsN
     RDWindowSums=[0]*WindowsN
     g.RDWindowSums=RDWindowSums
@@ -699,11 +721,13 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 if j<=AllZeroLeft or j>=AllZeroRight:
                     S0Value=1
                 #WR=(RDWindows[i][j]/RDWindowStandards[j]) if RDWindowStandards[j]!=0 else S0Value
-                Standard=getNormalRD(i,j)
+                Standard=getNormalRD(TheContig,i,j)
                 WR=RDWindows[i][j]/Standard if Standard!=0 else S0Value
-                if RDWindowStandards[j]==0 and RDWindows[i][j]!=0:
+                if Standard==0 and RDWindows[i][j]!=0:
                     WR=RDWindows[i][j]/RDWindowAverages[j]
                 MixedRDRs[i][j]=WR
+                #if j==10000:
+                #    print("SRC:%s,SRS:%s,SR:%s,Standard:%s,WR:%s"%(g.StatisticalReadCounts[j],g.StatisticalRDWindowSums[j],g.SampleReadCount[i],Standard,WR),file=sys.stderr)
                 #MixedRDRs[i][j]=(WR/SampleSequenceDepthRatio[i]) if SampleSequenceDepthRatio[i]!=0 else 0
                 '''
                 SR=(RDWindows[i][j]/SampleAverages[i]) if SampleAverages[i]!=0 else 0
@@ -718,6 +742,36 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
                 MixedRDRs[i][j]*=2.0#diploid
                 #if RDWindowStandards[j]==0:
                     #MixedRDRs[i][j]=2#if windows average is 0, we consider here is not valuable, so mark as normal(CN=2)
+        if Smooth>1:
+            if Smooth%2==0:
+                Smooth+=1
+            for i in range(SampleN):
+                Smoother=array("f",[0]*WindowsN)
+                for j in range(WindowsN):
+                    SH=int(Smooth/2)
+                    SB=0 if j<SH else j-SH
+                    SE=WindowsN if j+SH>WindowsN else j+SH
+                    for k in range(SB,SE):
+                        Smoother[j]+=MixedRDRs[i][k]
+                    Smoother[j]/=Smooth
+                MixedRDRs[i]=Smoother
+        if Mean2Adjust:
+            #sf=open("data/SampleCountMeanData.txt","w")
+            #first=True
+            for i in range(SampleN):
+                #if not first:
+                #    print("\n",end="",file=sf)
+                #first=False
+                Mean=0
+                for j in range(WindowsN):
+                    Mean+=MixedRDRs[i][j]
+                Mean/=WindowsN
+                ARatio=2.0/Mean
+                for j in range(WindowsN):
+                    MixedRDRs[i][j]*=ARatio
+                #print("%s: Count:%s, Mean:%s"%(TheContig.SampleNames[i],g.SampleReadCount[i],Mean),end="",file=sf)
+            #sf.close()
+            #exit(0)
     """
     rdtestfile=open("data/rdtest.txt","a")
     for i in range(WindowsN):
@@ -737,7 +791,28 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
             MixedRDRs[i][j]/=ERD
     ERD=1.0
     '''
-
+    '''sf=open("data/SampleCountMeanDataContigCount.txt","w")
+    first=True
+    for i in range(SampleN):
+        if not first:
+            print("\n",end="",file=sf)
+        first=False
+        Mean=0
+        for j in range(WindowsN):
+            Mean+=MixedRDRs[i][j]
+        Mean/=WindowsN
+        print("%s: Count:%s, Mean:%s, ContigCount:%s"%(TheContig.SampleNames[i],g.SampleReadCount[i],Mean,TheContig.SampleReadCount[i]),end="",file=sf)
+    sf.close()
+    exit(0)'''
+    sf=open("data/HG00404_w100_standard.mrd","w")
+    first=True
+    for j in range(WindowsN):
+        if not first:
+            print("\n",end="",file=sf)
+        first=False
+        print("%s,%s"%(MixedRDRs[0][j],getNormalRD(TheContig,0,j)),end="",file=sf)
+    sf.close()
+    #exit(0)
     RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
     Sum=0
     for i in range(WindowsN):
@@ -836,7 +911,9 @@ def readRDData(mygenome, SampleNames, FileName):
                     Skip=True
                     continue
                 Length=int(sl[1])
-                Windows=mygenome.get(ContigName).RDWindows[-1]
+                TheContig=mygenome.get(ContigName)
+                Windows=TheContig.RDWindows[-1]
+                ContigSampleReadCounts=TheContig.ContigSampleReadCounts
                 Skip=False
                 ConI=0
             continue
@@ -851,6 +928,7 @@ def readRDData(mygenome, SampleNames, FileName):
         #        raise e
         Windows[ConI]=float(line)
         ReadCount+=Windows[ConI]
+        ContigSampleReadCounts[-1]+=Windows[ConI]
         ConI+=1
     SampleNames.append(SampleName)
     mygenome.changeSampleName(-1,SampleName)

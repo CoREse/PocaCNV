@@ -149,6 +149,7 @@ if __name__ == "__main__":
                 writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount, g.RDWindowSize, g.SamplePaths[i],g.WriteRDDataTo)
                 print(gettime()+"Stored rd data for %s to %s."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
             SampleIndex+=1
+        mygenome.calcContigReadCounts()
         if g.WriteRDDataOnly:
             exit(0)
         #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
