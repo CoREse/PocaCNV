@@ -3,7 +3,7 @@ AR=ar
 CPPFLAGS= -Wall -O3 -Ihtslib
 LDFLAGS=-lz -lm -lbz2 -llzma -lpthread
 LIBS=
-PYTHON=python3.6m
+PYTHON=python3.8
 INCLUDE=/usr/include/$(PYTHON)
 
 PROJECT_OBJS=jc.o
