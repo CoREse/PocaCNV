@@ -13,6 +13,7 @@ PrintResult=True
 PrintOuts=False
 PrintSample=None
 MinLength=0#Minimum Variant Length
+MinScore=0
 MaxAF=1#Max allele frequency, only apply for gold standard
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/HG00514.BIP-unified.vcf.gz'
 #GSF='/mnt/c/Users/CRE/Productive/Programming/data/ALL_Illumina_Integrate_20170206.vcf.gz'
@@ -54,6 +55,9 @@ if len(sys.argv)>1:
         elif a=="-PS":
             PrintSample=sys.argv[i+1]
             i+=1
+        elif a=="-MSC":
+            MinScore=float(sys.argv[i+1])
+            i+=1
         else:
             MyF.append(a)
         i+=1
@@ -73,6 +77,6 @@ if PrintSample!=None:
     exit(0)
 Test=VariantRecords("Test")
 for i in range(len(MyF)):
-    Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength)
+    Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength,MaxAF,MinScore)
 
 print(Test.interpret(Test.matchAll(Gold),PrintResult))

@@ -278,7 +278,7 @@ class VariantRecords:
                             Out+="%s"%RSamples[SN][i][0][j]
         return Out
     
-    def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0,MaxAF=1):
+    def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0,MaxAF=1,MinScore=0):
         vcf=pysam.VariantFile(filename,"r")
         result=[]
         included={}
@@ -317,6 +317,13 @@ class VariantRecords:
                         continue
                 CNAlts=[1]
                 tempRecord=Record(chrom,record.pos,End)
+                if MinScore!=0:
+                    try:
+                        SC=float(record.info["SC"])
+                        if SC<MinScore:
+                            continue
+                    except:
+                        pass
                 AFs=[1]
                 Ai=0
                 for a in record.alts:
