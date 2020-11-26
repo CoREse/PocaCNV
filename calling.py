@@ -22,7 +22,7 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
 def getRDScore(C, TheContig):
     Score=0
     P=1
-    CN2L=1
+    CN2L=0
     for e in C.Evidences:
         e.PassConfidence=0
         mu=0
@@ -32,7 +32,7 @@ def getRDScore(C, TheContig):
         else:
             mu,mus=(e.Data.mu,e.Data.mus)
         e.PassConfidence=1-cn2likely(e.Data,TheContig)
-        CN2L*=1-e.PassConfidence
+        CN2L=max(CN2L,1-e.PassConfidence)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #v=e.Data.AverageRD/2.0*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
         #mus=e.Data.AverageRD/2.0*mu
@@ -58,6 +58,7 @@ def getRDScore(C, TheContig):
             #print(Pd,Pmuscn,Pmus, CN, poisson.pmf(mus,int(mu*CN/2)),file=sys.stderr)
         e.Data.CN=MCN
         e.Confidence=MP
+        #print(e.Confidence)
         #if e.Confidence>g.SampleConfidenceThreshold:
         #    P*=1-MP
         '''
@@ -188,7 +189,7 @@ def callSV(ReferenceFile,C,TheContig,Score=None):
                     if E.Data.CN-1==Alleles[i]:
                         SA=(i+1,0)
                         break
-            Samples.append((E.Sample,SA))
+            Samples.append((E.Sample,SA,E.Confidence))
         Samples.sort(key=lambda s:s[0])
         for i in range(len(Alleles)):
             Alleles[i]="<CN%s>"%Alleles[i]

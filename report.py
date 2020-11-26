@@ -39,13 +39,13 @@ def reportVCF(SVs,RefSeq,OutFile,ReportHeader=False,MyGenome=None):
             AFS+="%s"%AF[i]
         SC="%s"%SV.Score
         INFO="SVTYPE=%s;END=%s;IMPRECISE;SVLEN=%d;AC=%s;AF=%s;NS=%d;AN=%d;SC=%s;VT=SV"%(SV.SVType,SV.BreakRight,SVLEN,ACS,AFS,NS,AN,SC)
-        print("%s\t%s\t*\t%s\t%s\t100\tPASS\t%s\tGT"%(SV.Chrom,SV.BreakLeft,Ref,Alt,INFO),end="",file=OutFile)
+        print("%s\t%s\t*\t%s\t%s\t100\tPASS\t%s\tGT:CS"%(SV.Chrom,SV.BreakLeft,Ref,Alt,INFO),end="",file=OutFile)
         SI=0
         for i in range(len(g.SampleNames)):
             if SI>=len(SV.Samples) or i!=SV.Samples[SI][0]:
-                print("\t0/0",end="",file=OutFile)
+                print("\t0/0:.",end="",file=OutFile)
             else:
-                print("\t%s/%s"%(SV.Samples[SI][1][0],SV.Samples[SI][1][1]),end="",file=OutFile)
+                print("\t%s/%s:%s"%(SV.Samples[SI][1][0],SV.Samples[SI][1][1],SV.Samples[SI][2]),end="",file=OutFile)
                 SI+=1
         print("\n",end="",file=OutFile)
 
@@ -72,6 +72,7 @@ def reportVCFHeader(OutFile,MyGenome):
         Header+='\n##ALT=<ID=CN%d,Description="Copy number allele: %d copies">'%(i,i)
     Header+="""
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=CS,Number=1,Type=Float,Description="Confidence Score">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of this variant">
 ##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
 ##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="SV length. It is only calculated for structural variation MEIs. For other types of SVs; one may calculate the SV length by INFO:END-START+1, or by finding the difference between lengthes of REF and ALT alleles">

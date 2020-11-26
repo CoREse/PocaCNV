@@ -24,16 +24,23 @@ def inclusion(In1,In2):#return 0: not overlapped, 1: overlapped, 2: In1 include 
 
 
 class Variant:
-    def __init__(self,Sample="",Type="",Chrom="",Start=0,End=0):
+    def __init__(self,Sample="",Type="",Chrom="",Start=0,End=0,SC=None,CS=None):
         self.Type=Type
         self.Chrom=Chrom
         self.Start=Start
         self.End=End
         self.Sample=Sample
         self.Length=self.End-self.Start
+        self.CS=CS
+        self.SC=SC
     
     def __str__(self):
-        return "[%s]%s:%s-%s,%s,%s"%(self.Sample,self.Chrom,self.Start,self.End,self.End-self.Start,self.Type)
+        Scores=""
+        if self.SC!=None:
+            Scores+=",SC:%s"%self.SC
+        if self.CS!=None:
+            Scores+=",CS:%s"%self.CS
+        return "[%s]%s:%s-%s,%s,%s%s"%(self.Sample,self.Chrom,self.Start,self.End,self.End-self.Start,self.Type,Scores)
     
     def match(self,Other,Mode=0.8):#if Mode="inclusion" use inclusion, else use Mode percentage overlap
         if self.Type!=Other.Type or self.Chrom!=Other.Chrom:
@@ -317,13 +324,14 @@ class VariantRecords:
                         continue
                 CNAlts=[1]
                 tempRecord=Record(chrom,record.pos,End)
-                if MinScore!=0:
-                    try:
-                        SC=float(record.info["SC"])
-                        if SC<MinScore:
-                            continue
-                    except:
-                        pass
+                SC=None
+                try:
+                    SC=float(record.info["SC"])
+                except:
+                    pass
+                if MinScore!=0 and SC!=None:
+                    if SC<MinScore:
+                        continue
                 AFs=[1]
                 Ai=0
                 for a in record.alts:
@@ -348,6 +356,11 @@ class VariantRecords:
                         if samples==None or SampleName in includedSamples.keys():
                             if record.samples[s].allele_indices!=(0,0):
                                 CN=2
+                                CS=None
+                                try:
+                                    CS=record.samples[s]["CS"]
+                                except:
+                                    pass
                                 if record.info["SVTYPE"]=="DEL" or record.info["SVTYPE"]=="DUP" or record.info["SVTYPE"]=="CNV":
                                     CN=CNAlts[record.samples[s].allele_indices[0]]+CNAlts[record.samples[s].allele_indices[1]]
                                 if CN==2:
@@ -359,7 +372,7 @@ class VariantRecords:
                                         SVType="DEL"
                                     else:
                                         SVType="DUP"
-                                    self.Variants.append(Variant(SampleName,SVType,chrom,record.pos,End))
+                                    self.Variants.append(Variant(SampleName,SVType,chrom,record.pos,End,SC,CS))
                                     self.getSample(SampleName).addVariantRaw(self.Variants[-1])
                                     tempRecord.addVariant(self.Variants[-1])
                 except Exception as e:
