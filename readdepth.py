@@ -232,11 +232,11 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,RDWindowSize=None):
         Ave/=End-Last
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,None,RDWindowSize))
         Last=End
-    CZInts=scanConZero(SampleMRDRs)
-    SampleIntervals.sort(key=lambda I:I.WBegin)
-    for I in CZInts:
-        TempInt=RDInterval(SampleI,I[0][0],I[0][1],I[1],None,RDWindowSize)
-        findNBindOrInsert(TempInt,SampleIntervals)
+    #CZInts=scanConZero(SampleMRDRs)
+    #SampleIntervals.sort(key=lambda I:I.WBegin)
+    #for I in CZInts:
+    #    TempInt=RDInterval(SampleI,I[0][0],I[0][1],I[1],None,RDWindowSize)
+    #    findNBindOrInsert(TempInt,SampleIntervals)
     SampleIntervals.sort(key=lambda I:I.WBegin)
     del SampleMRDRs
     return SampleIntervals
@@ -495,6 +495,8 @@ def makeRDICandidates(Evidences):
     for e in Evidences:
         Candidates.append(Candidate([e]))
     Candidates=combineCandidateSets(Candidates,[])
+    for c in Candidates:
+        c.unifyEvidences()
     return Candidates
 
 def partDiff(V1,V2):

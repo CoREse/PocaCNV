@@ -78,7 +78,8 @@ class Candidate:
     RangePercentage=0.03
     MinRange=100
     MaxRange=10000
-    CombineMode=2#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other, 2: like one, but with flexible CombineRange due to length
+    CombineMode=2#0: overlap > CombinePercentage of both Candidate, 1: each evidence has begin and end range within CombineRange with each other, 2: like one, but with flexible CombineRange due to length, 3: like one, but will average the begin and end(by the evidence)
+    AveRange=True
     AveBreak=False
     def __init__(self,Es=[]):
         self.SVType=None#0: deletion, 1: insertion, 2:dup, 3:CNV
@@ -97,40 +98,59 @@ class Candidate:
         SumLeft=0
         SumRight=0
         BN=0
-        for e in self.Evidences:
-            self.Begin, self.End=(min(self.Begin,e.Begin),max(self.End,e.End))
-            if e.Type==0:
-                for pi in e.Data:
-                    if Candidate.AveBreak:
-                        SumLeft+=pi.LEnd
-                        SumRight+=pi.RStart
-                        BN+=1
-                    else:
-                        self.BreakLeft=max(self.BreakLeft,pi.LEnd)
-                        self.BreakRight=min(self.BreakRight,pi.RStart)
-            if e.Type==1:
-                if Candidate.AveBreak:
-                    SumLeft+=e.Data.Begin
-                    SumRight+=e.Data.End
-                    BN+=1
-                else:
-                    self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
-                    self.BreakRight=min(self.BreakRight,e.Data.End)
-            if Candidate.AveBreak:
-                self.BreakLeft=SumLeft/BN
-                self.BreakRight=SumRight/BN
-
-        if Candidate.CombineMode==1 or Candidate.CombineMode==2:
-            self.BeginRange=(self.Begin,self.Begin)
-            self.EndRange=(self.End,self.End)
+        if Candidate.CombineMode==3:
+            SBegin=0
+            SEnd=0
             for e in self.Evidences:
+                SBegin+=e.Begin
+                SEnd+=e.End
+            self.Begin=int(SBegin/len(self.Evidences))
+            self.End=int(SEnd/len(self.Evidences))
+            self.BreakLeft=self.Begin
+            self.BreakRight=self.End
+        else:
+            for e in self.Evidences:
+                self.Begin, self.End=(min(self.Begin,e.Begin),max(self.End,e.End))
                 if e.Type==0:
                     for pi in e.Data:
-                        self.BeginRange=(min(self.BeginRange[0],pi.LStart),max(self.BeginRange[1],pi.LEnd))
-                        self.EndRange=(min(self.EndRange[0],pi.RStart),max(self.EndRange[1],pi.REnd))
+                        if Candidate.AveBreak:
+                            SumLeft+=pi.LEnd
+                            SumRight+=pi.RStart
+                            BN+=1
+                        else:
+                            self.BreakLeft=max(self.BreakLeft,pi.LEnd)
+                            self.BreakRight=min(self.BreakRight,pi.RStart)
                 if e.Type==1:
-                    self.BeginRange=(min(self.BeginRange[0],e.Data.Begin),max(self.BeginRange[1],e.Data.Begin))
-                    self.EndRange=(min(self.EndRange[0],e.Data.End),max(self.EndRange[1],e.Data.End))
+                    if Candidate.AveBreak:
+                        SumLeft+=e.Data.Begin
+                        SumRight+=e.Data.End
+                        BN+=1
+                    else:
+                        self.BreakLeft=max(self.BreakLeft,e.Data.Begin)
+                        self.BreakRight=min(self.BreakRight,e.Data.End)
+                if Candidate.AveBreak:
+                    self.BreakLeft=SumLeft/BN
+                    self.BreakRight=SumRight/BN
+
+            if Candidate.CombineMode==1 or Candidate.CombineMode==2:
+                self.BeginRange=(self.Begin,self.Begin)
+                self.EndRange=(self.End,self.End)
+                for e in self.Evidences:
+                    if e.Type==0:
+                        for pi in e.Data:
+                            self.BeginRange=(min(self.BeginRange[0],pi.LStart),max(self.BeginRange[1],pi.LEnd))
+                            self.EndRange=(min(self.EndRange[0],pi.RStart),max(self.EndRange[1],pi.REnd))
+                    if e.Type==1:
+                        self.BeginRange=(min(self.BeginRange[0],e.Data.Begin),max(self.BeginRange[1],e.Data.Begin))
+                        self.EndRange=(min(self.EndRange[0],e.Data.End),max(self.EndRange[1],e.Data.End))
+        if self.AveRange:
+            SBegin=0
+            SEnd=0
+            for e in self.Evidences:
+                SBegin+=e.Begin
+                SEnd+=e.End
+            self.Begin=int(SBegin/len(self.Evidences))
+            self.End=int(SEnd/len(self.Evidences))
 
     def deductSVType(self):
         if len(self.Evidences)!=0:
@@ -152,7 +172,7 @@ class Candidate:
             return 0
         #MinLength=min(self.End-self.Begin,other.End-other.Begin)
         ToCombine=False
-        if Candidate.CombineMode==0:
+        if Candidate.CombineMode==0 or Candidate.CombineMode==3:
             Length=max(self.End-self.Begin,other.End-other.Begin)
             Overlap=Overlap/Length if Length!=0 else 0
             if Overlap>=Candidate.CombinePercentage:
@@ -172,6 +192,18 @@ class Candidate:
             self.calculateSpread()
             return 1
         return 0
+    
+    def unifyEvidences(self):
+        for e in self.Evidences:
+            e.Begin=self.Begin
+            e.End=self.End
+            if e.Type==1:
+                e.Data.Begin=self.Begin
+                e.Data.End=self.End
+                e.Data.WBegin=int(self.Begin/g.RDWindowSize)
+                e.Data.WEnd=int(self.End/g.RDWindowSize)
+                if e.Data.WEnd<=e.Data.WBegin:
+                    e.Data.WEnd=e.Data.WBegin+1
 
 class Evidence:
     CombinePercentage=0.9
