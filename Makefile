@@ -54,6 +54,9 @@ qtest108:
 test22:
 	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 100 ~/data/CHS/*.rdf -C 22 > data/test22.vcf
 	python3 benchmark.py -C 22 data/test22.vcf
+test1:
+	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 100 ~/data/CHS/*.rdf -C 1 > data/test1.vcf
+	python3 benchmark.py -G ~/data/1000gp/chr1_indel_sv_chs.vcf -C 22 data/test1.vcf
 debug:
 	bash debugs/debug.sh
 bench:

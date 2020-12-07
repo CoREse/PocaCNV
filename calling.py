@@ -14,12 +14,17 @@ def conditionP(O,Ei):
 import CGetRDScores
 def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=[]
+    EDF=open("data/CHS108_%s_EData.txt"%(TheContig.Name),"w")
     for i in range(len(Candidates)):
-        Scores.append(getScore(Candidates[i],TheContig))
+        Scores.append(getScore(Candidates[i],TheContig,(EDF,i)))
     #Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,g.ThreadN)
+    EDF.close()
     return Scores
 
-def getRDScore(C, TheContig):
+def printEData(SegFileNNumber, TheContig, SiblingCount, E,NRD,SRD):
+    print("%s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD),file=SegFileNNumber[0])
+    
+def getRDScore(C, TheContig,SegmentFileNNumber=None):
     Score=0
     P=1
     CN2L=0
@@ -31,6 +36,7 @@ def getRDScore(C, TheContig):
             mu,mus=e.Data.calcMuMus(TheContig)
         else:
             mu,mus=(e.Data.mu,e.Data.mus)
+        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,mu,mus)
         e.PassConfidence=1-cn2likely(e.Data,TheContig)
         CN2L=max(CN2L,1-e.PassConfidence)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
@@ -77,8 +83,8 @@ def getRDScore(C, TheContig):
         '''
     return 1-CN2L
 
-def getScore(C,TheContig):
-    return getRDScore(C,TheContig)
+def getScore(C,TheContig,SFN):
+    return getRDScore(C,TheContig,SFN)
     Score=0
     RDScore=0
     U=0

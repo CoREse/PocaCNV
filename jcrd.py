@@ -121,7 +121,7 @@ if __name__ == "__main__":
         if len(g.Contigs)!=0:
             if ReferenceFile.references[tid] not in g.Contigs:
                 continue
-        c=Contig(ReferenceFile.references[tid],int(ReferenceFile.lengths[tid]/globals.RDWindowSize)+(1 if ReferenceFile.lengths[tid]%globals.RDWindowSize!=0 else 0))
+        c=Contig(ReferenceFile.references[tid],ReferenceFile.lengths[tid],globals.RDWindowSize)
         mygenome.RefID.append(tid)
         mygenome.append(c)
     ReferenceFile.close()

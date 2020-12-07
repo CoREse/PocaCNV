@@ -197,6 +197,9 @@ class Candidate:
         for e in self.Evidences:
             e.Begin=self.Begin
             e.End=self.End
+            if Candidate.CombineMode==2:
+                e.Begin=self.BreakLeft
+                e.End=self.BreakRight
             if e.Type==1:
                 e.Data.Begin=self.Begin
                 e.Data.End=self.End
