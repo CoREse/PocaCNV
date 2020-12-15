@@ -11,29 +11,18 @@ d_in=7
 d_out=1
 H=20
 
+ValidatePortion=0.05
+
 N=10000
 D=0
 DataFile=open(sys.argv[1],"r")
 Data=[]
-Labels=[]
 D0=0
 D1=0
 
-Bads=np.arange(1000,50000)
-np.random.shuffle(Bads)
+Data0=[]
+Data1=[]
 
-BadNum=260
-Bads=Bads[:BadNum]
-Bads=np.sort(Bads)
-
-BadCount=0
-
-ValidateN=10
-Selected0=0
-Selected1=0
-ValidateData=[]
-ValidateLabel=[]
-i=0
 for line in DataFile:
     sl=line.split()
     SegNum=int(sl[0])
@@ -43,37 +32,34 @@ for line in DataFile:
     End=int(sl[4])
     Mu=int(sl[5])
     MuS=int(sl[6])
-    Label=int(sl[7])
-    DataTensor=torch.Tensor([SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS])
+    PassConfidence=float(sl[7])
+    CN=float(sl[8])
+    Confidence=float(sl[9])
+    CScore=float(sl[10])
+    Label=int(sl[11])
+    DataTensor=torch.Tensor([SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,Label])
     DataTensor.resuires_grad=True
     LabelTensor=torch.LongTensor([Label])
     if Label==0:
         D0+=1
-        if Selected0<ValidateN:
-            if i%1000==347:
-                ValidateData.append(DataTensor)
-                ValidateLabel.append(LabelTensor)
-                Selected0+=1
-                continue
-        if BadCount>=260:
-            i+=1
-            continue
-        if D0!=Bads[BadCount]:
-            i+=1
-            continue
-        BadCount+=1
+        Data0.append(DataTensor)
     else:
         D1+=1
-        if Selected1<ValidateN:
-            if D1%10==7:
-                ValidateData.append(DataTensor)
-                ValidateLabel.append(LabelTensor)
-                Selected1+=1
-                continue
-    Data.append(DataTensor)
-    Labels.append(LabelTensor)
+        Data1.append(DataTensor)
     D+=1
-    i+=1
+
+TrainClassSize=min(D0,D1)
+ValidateClassSize=int(TrainClassSize*ValidatePortion)
+TrainClassSize-=ValidateClassSize
+
+np.random.shuffle(Data0)
+np.random.shuffle(Data1)
+
+ValidateData=Data0[:ValidateClassSize]+Data1[:ValidateClassSize]
+np.random.shuffle(ValidateData)
+
+Data=Data0[ValidateClassSize:ValidateClassSize+TrainClassSize]+Data1[ValidateClassSize:ValidateClassSize+TrainClassSize]
+np.random.shuffle(Data)
 
 print("Label1:%s Label0:%s, Data:%s"%(D1,D0,len(Data)))
 #print(Data,Labels)
@@ -91,7 +77,7 @@ class TwoLayerNet(torch.nn.Module):
 
     #  forward是
     def forward(self, x):
-        y_pred = self.linear2(torch.sigmoid(self.linear1(x)))
+        y_pred = torch.sigmoid(self.linear2(torch.sigmoid(self.linear1(x))))
         return y_pred
 
 
@@ -104,10 +90,10 @@ while 1:
     model = TwoLayerNet(d_in, H, d_out)
 
     # 规定loss function
-    loss_fn = nn.MSELoss(reduction='sum')
+    loss_fn = nn.BCELoss(reduction='sum')
 
     # 规定学习率
-    learning_rate = 1e-4
+    learning_rate = 1e-3
 
     #  定义optimizer做优化
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -117,13 +103,17 @@ while 1:
 
     for it in range(N):
         AveLoss=0
-        for i in range(D):
+        for i in range(TrainClassSize):
             #  forward pass
-            y_pred = model(Data[i])
+            y_pred = model(Data[i][:-1])
+            #print(y_pred,Data[i][-1:])
+            #exit(0)
 
             #  compute loss
-            loss = loss_fn(y_pred.float(), Labels[i].float())
-            AveLoss+= loss.item()
+            loss = loss_fn(y_pred, Data[i][-1:])
+            #print(loss)
+            #exit(0)
+            AveLoss+= float(loss)
             #loss_list.append(loss)
 
             #  backward pass
@@ -140,16 +130,16 @@ while 1:
     Correct=0
     Correct0=0
     Correct1=0
-    for i in range(Selected0+Selected1):
-        y_pred=1 if model(ValidateData[i])>0.5 else 0
-        if y_pred==ValidateLabel[i]:
+    for i in range(2*ValidateClassSize):
+        y_pred=1 if model(ValidateData[i][:-1])>0.5 else 0
+        if y_pred==ValidateData[i][-1]:
             Correct+=1
             if y_pred==1:
                 Correct1+=1
             else:
                 Correct0+=1
-    print(Selected0,Selected1,Correct,Correct0,Correct1)
-    CR=Correct/(Selected0+Selected1)
+    print(ValidateClassSize,Correct,Correct0,Correct1)
+    CR=Correct/(2*ValidateClassSize)
     if CR>Target:
         break
     print("CR:",CR)

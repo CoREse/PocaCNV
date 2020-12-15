@@ -11,7 +11,7 @@ from readdepth import cn2likely
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
 
-import CGetRDScores
+#import CGetRDScores
 def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=[]
     EDF=open("data/CHS108_%s_EData.txt"%(TheContig.Name),"w")
@@ -21,8 +21,8 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
     EDF.close()
     return Scores
 
-def printEData(SegFileNNumber, TheContig, SiblingCount, E,NRD,SRD):
-    print("%s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD),file=SegFileNNumber[0])
+def printEData(SegFileNNumber, TheContig, SiblingCount, E,NRD,SRD,CScore):
+    print("%s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
     
 def getRDScore(C, TheContig,SegmentFileNNumber=None):
     Score=0
@@ -36,7 +36,6 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None):
             mu,mus=e.Data.calcMuMus(TheContig)
         else:
             mu,mus=(e.Data.mu,e.Data.mus)
-        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,mu,mus)
         e.PassConfidence=1-cn2likely(e.Data,TheContig)
         CN2L=max(CN2L,1-e.PassConfidence)
         #v=e.Data.AverageRD/2.0*TheContig.MRMedians[e.Sample]*mu-mu#mu=lambda0*length, let averagerd*lambda0 be lambda
@@ -81,6 +80,8 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None):
         if qint[0]<v<qint[1]:
             Score+=1
         '''
+    for e in C.Evidences:
+        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,mu,mus,1-CN2L)
     return 1-CN2L
 
 def getScore(C,TheContig,SFN):
