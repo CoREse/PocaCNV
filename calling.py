@@ -21,8 +21,8 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
     EDF.close()
     return Scores
 
-def printEData(SegFileNNumber, TheContig, SiblingCount, E,NRD,SRD,CScore):
-    print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
+def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
+    print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,SRD,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
     
 def getRDScore(C, TheContig,SegmentFileNNumber=None):
     Score=0
@@ -81,7 +81,7 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None):
             Score+=1
         '''
     for e in C.Evidences:
-        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,mu,mus,1-CN2L)
+        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,1-CN2L)
     return 1-CN2L
 
 def getScore(C,TheContig,SFN):
