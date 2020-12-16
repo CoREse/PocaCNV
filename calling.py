@@ -22,7 +22,7 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
     return Scores
 
 def printEData(SegFileNNumber, TheContig, SiblingCount, E,NRD,SRD,CScore):
-    print("%s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
+    print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,NRD,SRD,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
     
 def getRDScore(C, TheContig,SegmentFileNNumber=None):
     Score=0
