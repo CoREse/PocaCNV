@@ -10,6 +10,7 @@ import gc
 import math
 import multiprocessing as mp
 import subprocess
+from sara import SaRa
 
 def cn2filter(Interval,TheContig,Confidence=None):
     if Interval.mu==None:
@@ -315,6 +316,7 @@ def getSDCandidates(TheContig):
     return SampleCandidates
 
 def segmentation(data):
+    return SaRa(data)
     return dnacopy_cbs(data)
 
 script=None
