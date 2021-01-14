@@ -5,6 +5,7 @@ class Contig:
         self.Name=name
         self.Length=int(length/RDWindowSize)+(1 if length%RDWindowSize!=0 else 0)
         self.NLength=length
+        self.RDWindowSize=RDWindowSize
         self.RDWindows=[]
         self.SampleNames=[]
         self.MixedRDRs=None
@@ -19,7 +20,7 @@ class Contig:
             self.ContigReadCount+=rc
     
     def genVacant(self):#gen with no sample
-        new=Contig(self.Name,self.Length,self.RDWindowSize)
+        new=Contig(self.Name,self.NLength,self.RDWindowSize)
         return new       
 
     def addSample(self,name=""):

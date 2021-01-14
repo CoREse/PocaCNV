@@ -334,8 +334,11 @@ class VariantRecords:
                         continue
                 AFs=[1]
                 Ai=0
+                CNVAlt=False
                 for a in record.alts:
-                    if "<CN" in a:
+                    if "<CNV>" in a:
+                        CNVAlt=True
+                    elif "<CN" in a:
                         CNAlts.append(int(a[a.find("<CN")+3:-1]))
                     elif "DEL" in a.upper():
                         CNAlts.append(0)
@@ -361,11 +364,13 @@ class VariantRecords:
                                     CS=record.samples[s]["CS"]
                                 except:
                                     pass
-                                if record.info["SVTYPE"]=="DEL" or record.info["SVTYPE"]=="DUP" or record.info["SVTYPE"]=="CNV":
+                                if CNVAlt==True:
+                                    CN=record.samples[s]["CN"]
+                                elif record.info["SVTYPE"]=="DEL" or record.info["SVTYPE"]=="DUP" or record.info["SVTYPE"]=="CNV":
                                     CN=CNAlts[record.samples[s].allele_indices[0]]+CNAlts[record.samples[s].allele_indices[1]]
                                 if CN==2:
                                     continue
-                                if AFs[record.samples[s].allele_indices[0]]>MaxAF and AFs[record.samples[s].allele_indices[1]]>MaxAF:
+                                if not CNVAlt and AFs[record.samples[s].allele_indices[0]]>MaxAF and AFs[record.samples[s].allele_indices[1]]>MaxAF:
                                     continue
                                 else:
                                     if CN<2:

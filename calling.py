@@ -7,6 +7,7 @@ from consts import *
 import sys
 from variants import CNV
 from readdepth import cn2likely
+import torch
 
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
@@ -15,16 +16,52 @@ def conditionP(O,Ei):
 def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=[]
     EDF=open("data/CHS108_%s_EData.txt"%(TheContig.Name),"w")
+    #model=torch.load("ScoringTrain/Model032/Model032.pickle")
+    model=torch.load("data/ScoringTrainModelData")
     for i in range(len(Candidates)):
-        Scores.append(getScore(Candidates[i],TheContig,(EDF,i)))
+        Scores.append(getScore(Candidates[i],TheContig,(EDF,i),model))
     #Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,g.ThreadN)
     EDF.close()
     return Scores
 
 def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
-    
-def getRDScore(C, TheContig,SegmentFileNNumber=None):
+    #[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,Label]
+    """ChrNo=TheContig.Name.upper()
+    try:
+        if ChrNo[:3]=="CHR":
+            ChrNo=ChrNo[3:]
+        if ChrNo=="X":
+            ChrNo=23
+        elif ChrNo=="Y":
+            ChrNo=24
+        else:
+            ChrNo=int(ChrNo)
+    except:
+        ChrNo=0"""
+    SegNum=SegFileNNumber[1]
+    ContigLength=TheContig.NLength
+    #SiblingCount
+    Start=E.Begin
+    End=E.End
+    Mu=E.Data.mu
+    MuS=E.Data.mus
+    PassConfidence=E.PassConfidence
+    CN=E.Data.CN
+    Confidence=E.Confidence
+    #CScore=float(sl[10])
+    Length=End-Start
+    StartPortion=Start/ContigLength
+    EndPortion=End/ContigLength
+    HasSibling=1 if SiblingCount>0 else 0
+    MultiSibling=1 if SiblingCount>1 else 0
+    SampleCount=len(TheContig.SampleNames)
+    SiblingRatio=SiblingCount/SampleCount
+    DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
+    #return torch.Tensor([SegFileNNumber[1],TheContig.NLength,SiblingCount,E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,ChrNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0])
+    return torch.Tensor(DataItem)
+
+def getRDScore(C, TheContig,SegmentFileNNumber=None,Model=None):
     Score=0
     P=1
     CN2L=0
@@ -81,11 +118,18 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None):
             Score+=1
         '''
     for e in C.Evidences:
-        printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,1-CN2L)
+        Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,1-CN2L)
+        YP=Model(Traits)
+        #print(Traits,YP,file=sys.stderr)
+        #exit(0)
+        if YP[1]>YP[0]:
+            e.NN=1
+        else:
+            e.NN=0
     return 1-CN2L
 
-def getScore(C,TheContig,SFN):
-    return getRDScore(C,TheContig,SFN)
+def getScore(C,TheContig,SFN,Model):
+    return getRDScore(C,TheContig,SFN,Model)
     Score=0
     RDScore=0
     U=0
@@ -171,6 +215,8 @@ def callSV(ReferenceFile,C,TheContig,Score=None):
         Occured=set()
         for E in C.Evidences:
             #if E.Confidence<=g.Parameters.SampleConfidenceThreshold:
+            #    continue
+            #if E.NN!=1:
             #    continue
             if E.Data.CN==2:
                 continue
