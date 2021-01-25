@@ -15,17 +15,22 @@ def conditionP(O,Ei):
 #import CGetRDScores
 def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=[]
-    EDF=open("data/CHS108_%s_EData.txt"%(TheContig.Name),"w")
+    if g.EDataName!=None:
+        EDF=open("data/%s%s_%s_%s_EData.txt"%(g.EDataName,len(TheContig.SampleNames),g.RDWindowSize,TheContig.Name),"w")
+    else:
+        EDF=None
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
     model=torch.load("data/ScoringTrainModelData")
     for i in range(len(Candidates)):
         Scores.append(getScore(Candidates[i],TheContig,(EDF,i),model))
     #Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,g.ThreadN)
-    EDF.close()
+    if EDF!=None:
+        EDF.close()
     return Scores
 
 def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
-    print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
+    if (SegFileNNumber[0]!=None):
+        print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
     #[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,Label]
     """ChrNo=TheContig.Name.upper()
     try:

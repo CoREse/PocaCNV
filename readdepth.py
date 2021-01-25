@@ -316,7 +316,7 @@ def getSDCandidates(TheContig):
     return SampleCandidates
 
 def segmentation(data):
-    return SaRa(data)
+    #return SaRa(data)
     return dnacopy_cbs(data)
 
 script=None

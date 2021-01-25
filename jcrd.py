@@ -51,6 +51,7 @@ if __name__ == "__main__":
         -WM                       Write Mixed RD data and other data
         -LC            FILENAME   Load candidates(include all data) from dumped file(str)
         -DC            FILENAME   Dump candidates to json FILENAME(str)
+        -EN            EDataName  EDataName if you want to write EData(for training)
         """,file=sys.stderr)
         exit(0)
     def getParas():
@@ -88,6 +89,9 @@ if __name__ == "__main__":
                     i+=1
                 elif a=="-LC":
                     g.LoadCandidates=sys.argv[i+1]
+                    i+=1
+                elif a=="-EN":
+                    g.EDataName=sys.argv[i+1]
                     i+=1
                 else:
                     g.SamplePaths.append(sys.argv[i])

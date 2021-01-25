@@ -49,13 +49,13 @@ qtestc:
 wotest:
 	time python3 jcrd.py -T ~/data/GRCh38_full_analysis_set_plus_decoy_hla.fa data/test*.cram -WO
 qtest108:
-	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 2000 ~/data/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
-	python3 benchmark.py -C 22 data/qtest108.vcf
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 2000 ~/data/0/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
+	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/qtest108.vcf
 test22:
-	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 100 ~/data/CHS/*.rdf -C 22 > data/test22.vcf
-	python3 benchmark.py -C 22 data/test22.vcf
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C 22 > data/test22.vcf
+	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
 test1:
-	time python3 -u jcrd.py -T ~/data/hs37d5.fa.gz -WS 100 ~/data/CHS/*.rdf -C 1 > data/test1.vcf
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C 1 > data/test1.vcf
 	python3 benchmark.py -G ~/data/1000gp/chr1_indel_sv_chs.vcf -C 22 data/test1.vcf
 debug:
 	bash debugs/debug.sh
