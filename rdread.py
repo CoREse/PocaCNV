@@ -39,18 +39,31 @@ def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
     ReadCount=0
     SampleIndex=0
     UnmappedCount=0
-    for read in SamFile:
-        ReadCount+=1
-        read: pysam.AlignedSegment
-        if read.is_unmapped:
-            UnmappedCount+=1
-            ReadCount+=1#Unmapped reads also count(to accurately measure the coverage)
-        else:
-            TheContig=thegenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
-            if TheContig==None:
-                continue
-            TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
+    #Reads=SamFile.fetch(until_eof=True)
+    #Reads:pysam.libcalignmentfile.IteratorRowAll
+    try:
+#        while 1:
+        for read in SamFile:
+#            try:
+#                read=next(SamFile)
+#            except Exception as e:
+#                if type(e)==StopIteration:
+#                    break
+#                print("WARN:(%s)%s"%(type(e),e),file=sys.stderr)
+#                continue
             ReadCount+=1
+            read: pysam.AlignedSegment
+            if read.is_unmapped:
+                UnmappedCount+=1
+                #ReadCount+=1#Unmapped reads also count(to accurately measure the coverage)
+            else:
+                TheContig=thegenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
+                if TheContig==None:
+                    continue
+                TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
+                #ReadCount+=1
+    except Exception as e:
+        print("WARN: %s"%(e),file=sys.stderr)
     SamFile.close()
     print(gettime()+"Sample %s read."%(Name),file=sys.stderr)
     print(gettime()+"Storing rd data for %s..."%(Name),file=sys.stderr)
