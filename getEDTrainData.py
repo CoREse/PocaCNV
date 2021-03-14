@@ -9,6 +9,8 @@ FineResults=[]
 for line in BenchDataFile:
     if line.strip()!="":
         sl=line.split("...")[1]
+        if len(sl)<2:
+            continue
         for s in sl.split("[")[1:]:
             SampleName=s.split("]")[0]
             BE=s.split("]")[1].split(",")[0].split(":")[1]

@@ -1,7 +1,7 @@
 from array import array
 
 class Contig:
-    def __init__(self,name,length,RDWindowSize):
+    def __init__(self,name,length,RDWindowSize,Genome):
         self.Name=name
         self.Length=int(length/RDWindowSize)+(1 if length%RDWindowSize!=0 else 0)
         self.NLength=length
@@ -13,6 +13,8 @@ class Contig:
         self.ContigSampleReadCounts=[]
         self.ContigReadCount=None
         self.SampleReadCount=self.ContigSampleReadCounts
+        self.Genome=Genome
+        self.Ploidies=[]
     
     def calcContigReadCount(self):
         self.ContigReadCount=0
@@ -27,6 +29,7 @@ class Contig:
         self.RDWindows.append(array("f",[0]*self.Length))
         self.SampleNames.append(name)
         self.ContigSampleReadCounts.append(0)
+        self.Ploidies.append(2)
     
     def changeSampleName(self, Index, Name):
         self.SampleNames[Index]=Name
@@ -110,3 +113,5 @@ class Genome:
     def calcContigReadCounts(self):
         for c in self.Contigs:
             c.calcContigReadCount()
+    def setGenomeLength(self,RefLength):
+        self.GenomeLength=RefLength

@@ -18,7 +18,10 @@ RDWindowSums=None
 AllReadCount=None
 StatisticalRDWindowSums=None#The middle pp part
 StatisticalReadCounts=None
+StatLocal=False
 EDataName=None
+EDataPath="data"
+GenomeLength=None
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7

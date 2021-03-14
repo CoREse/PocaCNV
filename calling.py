@@ -16,7 +16,7 @@ def conditionP(O,Ei):
 def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=[]
     if g.EDataName!=None:
-        EDF=open("data/%s%s_%s_%s_EData.txt"%(g.EDataName,len(TheContig.SampleNames),g.RDWindowSize,TheContig.Name),"w")
+        EDF=open("%s/%s%s_%s_%s_EData.txt"%(g.EDataPath, g.EDataName,len(TheContig.SampleNames),g.RDWindowSize,TheContig.Name),"w")
     else:
         EDF=None
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
@@ -223,12 +223,13 @@ def callSV(ReferenceFile,C,TheContig,Score=None):
             #    continue
             if E.NN!=1:
                 continue
-            if E.Data.CN==2:
+            Ploidy=E.Data.Ploidy
+            if E.Data.CN==Ploidy:
                 continue
-            if E.Data.CN<=1:
+            if E.Data.CN<Ploidy:
                 Alleles.add(0)
             else:
-                Alleles.add(E.Data.CN-1)
+                Alleles.add(E.Data.CN-(1 if Ploidy==2 else 0))
         Alleles=list(Alleles)
         if len(Alleles)==0:
             return SV

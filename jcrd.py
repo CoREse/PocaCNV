@@ -45,13 +45,14 @@ if __name__ == "__main__":
         -WT            PATH       Write all RD data also to PATH
         -WO                       Write RD data only(no calling)
         -C             ContigName Contain (only) contig, can be used multiple times(str)
-        -J,-j          ThreadNum  Thread number(int)
+        -J,-j          ThreadNum  Default:8. Thread number(int)
         -JR            ThreadNum  Thread number for reading sam files, default same as threadnum
-        -WS            Size       WindowSize(int)
+        -WS            Size       Default:100. WindowSize(int)
         -WM                       Write Mixed RD data and other data
         -LC            FILENAME   Load candidates(include all data) from dumped file(str)
         -DC            FILENAME   Dump candidates to json FILENAME(str)
         -EN            EDataName  EDataName if you want to write EData(for training)
+        -EP            EDataPath  Default:data. Path that stores EData
         """,file=sys.stderr)
         exit(0)
     def getParas():
@@ -93,6 +94,9 @@ if __name__ == "__main__":
                 elif a=="-EN":
                     g.EDataName=sys.argv[i+1]
                     i+=1
+                elif a=="-EP":
+                    g.EDataPath=sys.argv[i+1]
+                    i+=1
                 else:
                     g.SamplePaths.append(sys.argv[i])
             except Exception as e:
@@ -125,11 +129,12 @@ if __name__ == "__main__":
         if len(g.Contigs)!=0:
             if ReferenceFile.references[tid] not in g.Contigs:
                 continue
-        c=Contig(ReferenceFile.references[tid],ReferenceFile.lengths[tid],globals.RDWindowSize)
+        c=Contig(ReferenceFile.references[tid],ReferenceFile.lengths[tid],globals.RDWindowSize,mygenome)
         mygenome.RefID.append(tid)
         mygenome.append(c)
     ReferenceFile.close()
     RefLength=PosCount
+    mygenome.setGenomeLength(RefLength)
     print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
     print(gettime()+"Reading samples...",file=sys.stderr)
     SampleIndex=0
@@ -193,6 +198,7 @@ if __name__ == "__main__":
 
         RDICandidates=[]
         for c in mygenome:
+            ploidyProcessing(c)
             c.RDICandidates=analyzeRD(c.RDWindows,c.Length,c)
             #c.RDICandidates=filtExcludedAreas(c.RDICandidates)
             RDICandidates.append(c.RDICandidates)

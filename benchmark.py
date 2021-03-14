@@ -9,7 +9,7 @@ Contigs=None#["22"]
 Samples=None
 Samples=None#["HG00403"]
 SamplesFile=None#one sample name per line
-PrintResult=True
+PrintResult=False
 PrintOuts=False
 PrintSample=None
 MinLength=0#Minimum Variant Length
@@ -55,6 +55,8 @@ if len(sys.argv)>1:
         elif a=="-PS":
             PrintSample=sys.argv[i+1]
             i+=1
+        elif a=="-PD":
+            PrintResult=True
         elif a=="-MSC":
             MinScore=float(sys.argv[i+1])
             i+=1

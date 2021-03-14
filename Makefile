@@ -56,7 +56,13 @@ test22:
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
 test1:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C 1 > data/test1.vcf
-	python3 benchmark.py -G ~/data/1000gp/chr1_indel_sv_chs.vcf -C 22 data/test1.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 data/test1.vcf
+testX:
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -J 16 -C X > data/testX.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C X data/testX.vcf
+testY:
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C Y > data/testY.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C Y data/testY.vcf
 debug:
 	bash debugs/debug.sh
 bench:

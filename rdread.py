@@ -63,7 +63,7 @@ def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
                 TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
                 #ReadCount+=1
     except Exception as e:
-        print("WARN: %s"%(e),file=sys.stderr)
+        print("WARN:[Sample:%s] %s"%(Name,e),file=sys.stderr)
     SamFile.close()
     print(gettime()+"Sample %s read."%(Name),file=sys.stderr)
     print(gettime()+"Storing rd data for %s..."%(Name),file=sys.stderr)
