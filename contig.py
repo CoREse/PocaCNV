@@ -21,8 +21,8 @@ class Contig:
         for rc in self.ContigSampleReadCounts:
             self.ContigReadCount+=rc
     
-    def genVacant(self):#gen with no sample
-        new=Contig(self.Name,self.NLength,self.RDWindowSize)
+    def genVacant(self,TheGenome):#gen with no sample
+        new=Contig(self.Name,self.NLength,self.RDWindowSize,TheGenome)
         return new       
 
     def addSample(self,name=""):
@@ -64,7 +64,7 @@ class Genome:
         new=Genome()
         new.Name=self.Name
         for c in self.Contigs:
-            new.Contigs.append(c.genVacant())
+            new.Contigs.append(c.genVacant(self))
         new.Index=self.Index.copy()
         new.RefID=self.RefID.copy()
         return new

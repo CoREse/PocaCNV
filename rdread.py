@@ -21,10 +21,17 @@ def readRDDataAndSaveRDF(thegenome, SamplePaths):
             for i in range(len(SAMPaths)):
                 args.append((thegenome.genVacant(),SAMPaths[i],g.ReferencePath,g.RDWindowSize))
             addPool(pool)
-            Intervals=pool.starmap(readSamToRDF,args)
-            print(gettime()+"All SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
+            Results=pool.starmap(readSamToRDF,args)
             delPool()
             pool.terminate()
+            NoProblem=True
+            for i in range(len(Results)):
+                if Results[i]==False:
+                    NoProblem=False
+            if NoProblem:
+                print(gettime()+"All SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
+            else:
+                print(gettime()+"A part of SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
         else:
             for i in range(len(SAMPaths)):
                 readSamToRDF(thegenome.genVacant(),SAMPaths[i],g.ReferencePath,g.RDWindowSize)
@@ -64,8 +71,10 @@ def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
                 #ReadCount+=1
     except Exception as e:
         print("WARN:[Sample:%s] %s"%(Name,e),file=sys.stderr)
+        return False
     SamFile.close()
     print(gettime()+"Sample %s read."%(Name),file=sys.stderr)
     print(gettime()+"Storing rd data for %s..."%(Name),file=sys.stderr)
     writeSampleRDData(thegenome,Name,SampleIndex,ReadCount,WindowSize,FilePath)
     print(gettime()+"Stored rd data for %s."%(Name),file=sys.stderr)
+    return True
