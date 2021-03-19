@@ -135,6 +135,7 @@ if __name__ == "__main__":
     ReferenceFile.close()
     RefLength=PosCount
     mygenome.setGenomeLength(RefLength)
+    g.MyGenome=mygenome
     print(gettime()+"Reference %s read. Length:%s, Contigs:%s."%(g.ReferencePath,PosCount,len(mygenome)),file=sys.stderr)
     print(gettime()+"Reading samples...",file=sys.stderr)
     SampleIndex=0
@@ -150,9 +151,8 @@ if __name__ == "__main__":
         RDFPaths=readRDDataAndSaveRDF(mygenome,g.SamplePaths)#return RDF SamplePaths
         if g.WriteRDDataOnly:
             exit(0)
+        readRDDataAll(SampleNames,RDFPaths)
         for i in range(len(RDFPaths)):
-            print(gettime()+"Loading from %s..."%(RDFPaths[i]),file=sys.stderr)
-            readRDData(mygenome,SampleNames,RDFPaths[i])
             if g.WriteRDDataTo!=None:
                 print(gettime()+"Storing rd data for %s to %s..."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
                 writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount, g.RDWindowSize, g.SamplePaths[i],g.WriteRDDataTo)

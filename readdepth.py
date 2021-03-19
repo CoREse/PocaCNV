@@ -11,6 +11,7 @@ import math
 import multiprocessing as mp
 import subprocess
 from sara import SaRa
+import numba
 
 Deploid=set(["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"\
     ,"CHR1","CHR2","CHR3","CHR4","CHR5","CHR6","CHR7","CHR8","CHR9","CHR10","CHR11","CHR12","CHR13","CHR14","CHR15","CHR16","CHR17","CHR18","CHR19","CHR20","CHR21","CHR22"])
@@ -241,8 +242,9 @@ def scanConZero(SampleMRDRs):
                 Begin=None
     return Ints
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=None):
+def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
+    SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
     sys.stderr.flush()
     SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
@@ -282,13 +284,13 @@ def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use m
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            Intervals[i]=makeSampleRDIntervals(MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
+            Intervals[i]=makeSampleRDIntervals(TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
     else:
-        ctx=mp.get_context("spawn")
+        ctx=mp.get_context("fork")
         pool=ctx.Pool(g.ThreadN)
         args=[]
         for i in range(len(MixedRDRs)):
-            args.append((MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
+            args.append((TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
         addPool(pool)
         Intervals=pool.starmap(makeSampleRDIntervals,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
@@ -637,6 +639,21 @@ def getIntervalNormalRD_contig(TheContig,SampleI,WindowB,WindowE):
     SP=getSP(TheContig,WindowB,WindowE)
     return 0 if SP[1]==0 else TheContig.ContigSampleReadCounts[SampleI]/SP[1]*SP[0]
 
+@numba.jit(nopython=True, parallel=True)
+def calcStat(WindowsN, SampleN, RDWindows, RDWindowSums, SampleSums, RDWindowAverages, StatisticalRDWindowSums, StatisticalReadCounts):
+    for i in range(WindowsN):
+        for j in range(SampleN):
+            RDWindowSums[i]+=RDWindows[j][i]
+            SampleSums[j]+=RDWindows[j][i]
+            #WindowSamples[j]=(RDWindows[j][i],j)
+        RDWindowAverages[i]=RDWindowSums[i]/SampleN
+        #RDWindowMedians[i]=statistics.median(WindowSamples)
+        #WindowSamples.sort(key=lambda s:s[0])
+        #De=int(SampleN*0.5*(1-PP))
+        SP=getSP(TheContig,i,i+1)
+        StatisticalRDWindowSums[i]=SP[0]
+        StatisticalReadCounts[i]=SP[1]
+
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
     RDWindowAverages=[0]*WindowsN
@@ -673,6 +690,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         for j in range(SampleN):
             SampleAverages[j]=SampleSums[j]/WindowsN
             MixedRDRs.append(array("f",[0]*WindowsN))
+            #MixedRDRs.append(multiprocessing.sharedctypes.RawArray("f",[0]*WindowsN))
         #MixedRDRs=[[0]*WindowsN]*SampleN#Mixed Read depth rate, THIS is AWFUL! this will make SampleN copy of array objects, sharing the same memory space!
         """
         ZCount=0
@@ -743,6 +761,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
         MixedRDRs=[]
         for i in range(SampleN):
             MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
+            #MixedRDRs.append(multiprocessing.sharedctypes.RawArray("f",[0]*WindowsN))
         for i in range(SampleN):
             for j in range(WindowsN):
                 S0Value=0
@@ -908,6 +927,160 @@ def writeMixedRDData(mygenome,SampleNames):
                 print("\n%.8s"%(c.MixedRDRs[i][j]),end="",file=rdfile)
         rdfile.close()
     return
+
+def readRDDataNA0(ContigsWindows, ContigSet, SampleI, FileName):#read, no adding sample
+    print(gettime()+"Loading from %s..."%(FileName),file=sys.stderr)
+    SampleName=FileName.split("\\")[-1].split("/")[-1][:-4]
+    if "rd"==SampleName[:2]:
+        SampleNameS=SampleName.split("rd")
+        SampleName=""
+        for s in SampleNameS[1:]:
+            SampleName+=s
+    DataFile=open(FileName,"r")
+    ContigName=None
+    Skip=False
+    ConI=0
+    ReadCount=0
+    SampleReadCount=None
+    Windows=None
+    ContigSampleReadCount={}
+    for line in DataFile:
+        if line[0]=='#':
+            if line[1]=="#":
+                sl=line[2:].split(":",maxsplit=1)
+                if sl[0]=="Sample":
+                    SampleName=sl[1].strip()
+                elif sl[0]=="SampleReadCount":
+                    SampleReadCount=int(sl[1].strip())
+            else:
+                sl=line[1:].split()
+                ContigName=sl[0]
+                if ContigName not in ContigSet:
+                    Skip=True
+                    continue
+                Length=int(sl[1])
+                if ContigName not in ContigSampleReadCount.keys():
+                    ContigSampleReadCount[ContigName]=0
+                Windows=ContigsWindows[ContigName]
+                Skip=False
+                ConI=0
+            continue
+        if Skip:
+            continue
+        #try:
+        #    Windows[ConI]=int(line)
+        #except IndexError as e:
+        #    if len(Windows)<=ConI:
+        #        print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
+        #    else:
+        #        raise e
+        Windows[ConI]=float(line)
+        ReadCount+=Windows[ConI]
+        ContigSampleReadCount[ContigName]+=Windows[ConI]
+        ConI+=1
+    if SampleReadCount==None:
+        RC=ReadCount
+    else:
+        RC=SampleReadCount
+    DataFile.close()
+    return SampleName, RC, ContigSampleReadCount
+
+def readRDDataNA(SampleI, FileName):#read, no adding sample
+    print(gettime()+"Loading from %s..."%(FileName),file=sys.stderr)
+    mygenome=g.MyGenome
+    SampleName=FileName.split("\\")[-1].split("/")[-1][:-4]
+    if "rd"==SampleName[:2]:
+        SampleNameS=SampleName.split("rd")
+        SampleName=""
+        for s in SampleNameS[1:]:
+            SampleName+=s
+    DataFile=open(FileName,"r")
+    ContigName=None
+    Skip=False
+    Windows=None
+    ConI=0
+    ReadCount=0
+    SampleReadCount=None
+    ContigSampleReadCount={}
+    for line in DataFile:
+        if line[0]=='#':
+            if line[1]=="#":
+                sl=line[2:].split(":",maxsplit=1)
+                if sl[0]=="Sample":
+                    SampleName=sl[1].strip()
+                elif sl[0]=="SampleReadCount":
+                    SampleReadCount=int(sl[1].strip())
+            else:
+                sl=line[1:].split()
+                ContigName=sl[0]
+                if not mygenome.hasContig(ContigName):
+                    Skip=True
+                    continue
+                Length=int(sl[1])
+                TheContig=mygenome.get(ContigName)
+                Windows=TheContig.RDWindows[SampleI]
+                if ContigName not in ContigSampleReadCount.keys():
+                    ContigSampleReadCount[ContigName]=0
+                Skip=False
+                ConI=0
+            continue
+        if Skip:
+            continue
+        #try:
+        #    Windows[ConI]=int(line)
+        #except IndexError as e:
+        #    if len(Windows)<=ConI:
+        #        print("data exceed contig %s's capacity(data no.%s, len of %s:%s)!"%(ContigName,ConI,ContigName,len(Windows)),file=sys.stderr)
+        #    else:
+        #        raise e
+        Windows[ConI]=float(line)
+        ReadCount+=Windows[ConI]
+        ContigSampleReadCount[ContigName]+=Windows[ConI]
+        ConI+=1
+    if SampleReadCount==None:
+        RC=ReadCount
+    else:
+        RC=SampleReadCount
+    DataFile.close()
+    return SampleName, RC, ContigSampleReadCount
+
+def readRDDataAll(SampleNames, FileNames):
+    mygenome=g.MyGenome
+    for i in FileNames:
+        mygenome.addSample("")
+    #ContigsWindows={}
+    #ContigSet=set()
+    #for i in range(len(mygenome.Contigs)):
+    #    ContigSet.add(mygenome.Contigs[i].Name)
+    if g.ThreadN==1:
+        for i in range(len(FileNames)):
+            #for j in range(len(mygenome.Contigs)):
+            #    ContigsWindows[mygenome.Contigs[j].Name]=mygenome.Contigs[j].RDWindows[i]
+            SampleName, RC, CRC=readRDDataNA(i,FileNames[i])
+            mygenome.changeSampleName(i,SampleName)
+            SampleNames.append(SampleName)
+            g.SampleReadCount.append(RC)
+            for j in range(len(mygenome.Contigs)):
+                mygenome.Contigs[j].ContigSampleReadCounts[i]=CRC[mygenome.Contigs[j].Name]
+        print(gettime()+"RDFs read. "+getMemUsage(),file=sys.stderr)
+    else:
+        ctx=mp.get_context("fork")
+        pool=ctx.Pool(g.ThreadN)
+        args=[]
+        for i in range(len(FileNames)):
+            #for j in range(len(mygenome.Contigs)):
+            #    ContigsWindows[mygenome.Contigs[j].Name]=mygenome.Contigs[j].RDWindows[i]
+            args.append((i,FileNames[i]))
+        addPool(pool)
+        Results=pool.starmap(readRDDataNA,args)
+        print(gettime()+"RDFs read. "+getMemUsage(),file=sys.stderr)
+        delPool()
+        pool.terminate()
+        for i in range(len(Results)):
+            SampleNames.append(Results[i][0])
+            g.SampleReadCount.append(Results[i][1])
+            for j in range(len(mygenome.Contigs)):
+                mygenome.Contigs[j].ContigSampleReadCounts[i]=Results[i][2][mygenome.Contigs[j].Name]
 
 def readRDData(mygenome, SampleNames, FileName):
     SampleName=FileName.split("\\")[-1].split("/")[-1][:-4]

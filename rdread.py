@@ -5,13 +5,16 @@ import globals as g
 def readRDDataAndSaveRDF(thegenome, SamplePaths):
     RDFPaths=SamplePaths.copy()
     SAMPaths=[]
+    RtS=[]
     for i in range(len(SamplePaths)):
         #print(gettime()+"Reading %s..."%(g.SamplePaths[i]),file=sys.stderr)
+        RtS.append(-1)
         if SamplePaths[i].split(".")[-1]=="rdf":
             continue
         else:
             RDFPaths[i]=getRDFPath(SamplePaths[i])
             SAMPaths.append(SamplePaths[i])
+            RtS[-1]=len(SAMPaths)-1
     if len(SAMPaths)>0:
         print(gettime()+"Start reading SAM files and save them to RDF files for following analysis...",file=sys.stderr)
         if g.ThreadNR>1:
@@ -24,18 +27,26 @@ def readRDDataAndSaveRDF(thegenome, SamplePaths):
             Results=pool.starmap(readSamToRDF,args)
             delPool()
             pool.terminate()
-            NoProblem=True
-            for i in range(len(Results)):
-                if Results[i]==False:
-                    NoProblem=False
-            if NoProblem:
-                print(gettime()+"All SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
-            else:
-                print(gettime()+"A part of SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
         else:
+            Results=[]
             for i in range(len(SAMPaths)):
-                readSamToRDF(thegenome.genVacant(),SAMPaths[i],g.ReferencePath,g.RDWindowSize)
+                Results.append(readSamToRDF(thegenome.genVacant(),SAMPaths[i],g.ReferencePath,g.RDWindowSize))
+        NoProblem=True
+        RDFPathsO=RDFPaths
+        RDFPaths=[]
+        for i in range(len(Results)):
+            if Results[i]==False:
+                NoProblem=False
+        for i in range(len(RDFPathsO)):
+            if RtS[i]!=-1:
+                if Results[RtS[i]]:
+                    RDFPaths.append(RDFPathsO[i])
+            else:
+                RDFPaths.append(RDFPathsO[i])
+        if NoProblem:
             print(gettime()+"All SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
+        else:
+            print(gettime()+"A part of SAMFile(s) read and RDFs made. "+getMemUsage(),file=sys.stderr)
     return RDFPaths
 
 def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):

@@ -1,4 +1,5 @@
 from array import array
+import multiprocessing.sharedctypes
 
 class Contig:
     def __init__(self,name,length,RDWindowSize,Genome):
@@ -26,7 +27,8 @@ class Contig:
         return new       
 
     def addSample(self,name=""):
-        self.RDWindows.append(array("f",[0]*self.Length))
+        #self.RDWindows.append(array("f",[0]*self.Length))
+        self.RDWindows.append(multiprocessing.sharedctypes.RawArray("f",[0]*self.Length))
         self.SampleNames.append(name)
         self.ContigSampleReadCounts.append(0)
         self.Ploidies.append(2)

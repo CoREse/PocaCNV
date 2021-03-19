@@ -22,6 +22,7 @@ StatLocal=False
 EDataName=None
 EDataPath="data"
 GenomeLength=None
+MyGenome=None
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7
