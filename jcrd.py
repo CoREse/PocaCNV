@@ -12,7 +12,7 @@ from report import *
 from joint import uniformlyCombine
 import json
 import multiprocessing as mp
-from rdread import *
+from jcio import *
 
 import os
 import psutil
