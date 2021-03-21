@@ -1,3 +1,5 @@
+#!python
+#cython: language_level=3
 import globals as g
 from utils import *
 import sys
@@ -11,7 +13,9 @@ import math
 import multiprocessing as mp
 import subprocess
 from sara import SaRa
-import numba
+
+cimport cython
+from cython.parallel import prange
 
 Deploid=set(["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"\
     ,"CHR1","CHR2","CHR3","CHR4","CHR5","CHR6","CHR7","CHR8","CHR9","CHR10","CHR11","CHR12","CHR13","CHR14","CHR15","CHR16","CHR17","CHR18","CHR19","CHR20","CHR21","CHR22"])
@@ -375,21 +379,6 @@ def getIntervalNormalRD_overall(TheContig,SampleI,WindowB,WindowE):
 def getIntervalNormalRD_contig(TheContig,SampleI,WindowB,WindowE):
     SP=getSP(TheContig,WindowB,WindowE)
     return 0 if SP[1]==0 else TheContig.ContigSampleReadCounts[SampleI]/SP[1]*SP[0]
-
-@numba.jit(nopython=True, parallel=True)
-def calcStat(WindowsN, SampleN, RDWindows, RDWindowSums, SampleSums, RDWindowAverages, StatisticalRDWindowSums, StatisticalReadCounts):
-    for i in range(WindowsN):
-        for j in range(SampleN):
-            RDWindowSums[i]+=RDWindows[j][i]
-            SampleSums[j]+=RDWindows[j][i]
-            #WindowSamples[j]=(RDWindows[j][i],j)
-        RDWindowAverages[i]=RDWindowSums[i]/SampleN
-        #RDWindowMedians[i]=statistics.median(WindowSamples)
-        #WindowSamples.sort(key=lambda s:s[0])
-        #De=int(SampleN*0.5*(1-PP))
-        SP=getSP(TheContig,i,i+1)
-        StatisticalRDWindowSums[i]=SP[0]
-        StatisticalReadCounts[i]=SP[1]
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
