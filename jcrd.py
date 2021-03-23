@@ -2,7 +2,6 @@ import pysam
 import sys
 import time
 import globals
-import pyximport; pyximport.install()
 from calling import *
 from readpair import *
 from readdepth import *

@@ -1,5 +1,3 @@
-#!python
-#cython: language_level=3
 import globals as g
 from utils import *
 import sys
@@ -14,8 +12,8 @@ import multiprocessing as mp
 import subprocess
 from sara import SaRa
 
-cimport cython
-from cython.parallel import prange
+import pyximportcpp; pyximportcpp.install()
+from rdprocessing import *
 
 Deploid=set(["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"\
     ,"CHR1","CHR2","CHR3","CHR4","CHR5","CHR6","CHR7","CHR8","CHR9","CHR10","CHR11","CHR12","CHR13","CHR14","CHR15","CHR16","CHR17","CHR18","CHR19","CHR20","CHR21","CHR22"])
@@ -243,7 +241,7 @@ def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
-    if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
+    if True or g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
             Intervals[i]=makeSampleRDIntervals(TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
@@ -369,6 +367,9 @@ else:
     def getNormalRD(TheContig,SampleI,WindowI):
         return getNormalRD_overall(TheContig,SampleI,WindowI)
 
+def getNormalRDDirect(StatisticalReadCounts, StatisticalRDWindowSums,SampleReadCount, SampleI, WindowI):
+    return 0 if StatisticalReadCounts[WindowI]==0 else StatisticalRDWindowSums[WindowI]*(SampleReadCount[SampleI]/StatisticalReadCounts[WindowI])
+
 def getIntervalNormalRD(TheContig,SampleI,WindowB,WindowE):
     return getIntervalNormalRD_overall(TheContig,SampleI,WindowB,WindowE)
 
@@ -382,126 +383,40 @@ def getIntervalNormalRD_contig(TheContig,SampleI,WindowB,WindowE):
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
-    RDWindowAverages=[0]*WindowsN
     PPRDWindowAverages=[0]*WindowsN
     PP=0.9
-    Mean2Adjust=False
-    Smooth=1
     #RDWindowMedians=[0]*WindowsN
-    RDWindowSums=[0]*WindowsN
+    RDWindowSums=array("d",[0]*WindowsN)
     g.RDWindowSums=RDWindowSums
     SampleN=len(RDWindows)
-    SampleSums=[0]*SampleN
-    SampleAverages=[0]*SampleN
     RDWindowStandards=PPRDWindowAverages
     #WindowsP=[0]*WindowsN#use maximal-likelyhood estimate to estimate poisson(np)'s p, with sequencing reads number as n. As a result, the p=(sum of rd of all samples)/(sum of n)
     #furthermore, the standard rd of sample i should be p*ni=(sum of rd)*((ni)/(sum of n))
     AllReadCount=0#sum of n
-    StatisticalReadCounts=[0]*WindowsN#remove the least and last samples
-    StatisticalRDWindowSums=[0]*WindowsN
+    StatisticalReadCounts=array("d",[0]*(WindowsN+1))#[0]*WindowsN#remove the least and last samples
+    StatisticalRDWindowSums=array("d",[0]*(WindowsN+1))#[0]*WindowsN
+    g.StatisticalRDWindowSums=StatisticalRDWindowSums
+    g.StatisticalReadCounts=StatisticalReadCounts
     for i in range(SampleN):
         AllReadCount+=g.SampleReadCount[i]
     g.AllReadCount=AllReadCount
-    
-    #calc MRDs
-    WindowSamples=[]
-    for j in range(SampleN):
-        WindowSamples.append((0,0))
-    for i in range(WindowsN):
-        for j in range(SampleN):
-            RDWindowSums[i]+=RDWindows[j][i]
-            SampleSums[j]+=RDWindows[j][i]
-        RDWindowAverages[i]=RDWindowSums[i]/SampleN
-        SP=getSP(TheContig,i,i+1)
-        StatisticalRDWindowSums[i]=SP[0]
-        StatisticalReadCounts[i]=SP[1]
-    
-    g.StatisticalRDWindowSums=StatisticalRDWindowSums
-    g.StatisticalReadCounts=StatisticalReadCounts
-    AllZeroLeft=-1
-    AllZeroRight=WindowsN
-    Left1=False
-    Right1=False
-    for i in range(WindowsN):
-        if not Right1:
-            j=WindowsN-i
-            if j>=0:
-                if RDWindowSums[i]!=0:
-                    Right1=True
-                else:
-                    AllZeroRight=j
-        if not Left1:
-            if RDWindowSums[i]!=0:
-                Left1=True
-            else:
-                AllZeroLeft=i
-        if Right1 and Left1:
-            break
-    SampleSumAverage=0
-    for j in range(SampleN):
-        SampleAverages[j]=SampleSums[j]/WindowsN
-        SampleSumAverage+=SampleSums[j]
-    SampleSumAverage/=SampleN
 
     MixedRDRs=[]
     for i in range(SampleN):
-        MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
-    for i in range(SampleN):
-        for j in range(WindowsN):
-            S0Value=0
-            if j<=AllZeroLeft or j>=AllZeroRight:
-                S0Value=1
-            Standard=getNormalRD(TheContig,i,j)
-            WR=RDWindows[i][j]/Standard if Standard!=0 else S0Value
-            if Standard==0 and RDWindows[i][j]!=0:
-                WR=RDWindows[i][j]/RDWindowAverages[j]
-            MixedRDRs[i][j]=WR
-
-    for i in range(SampleN):
-        for j in range(WindowsN):
-            MixedRDRs[i][j]*=TheContig.Ploidies[i]#diploid
-    if Smooth>1:
-        if Smooth%2==0:
-            Smooth+=1
-        for i in range(SampleN):
-            Smoother=array("f",[0]*WindowsN)
-            for j in range(WindowsN):
-                SH=int(Smooth/2)
-                SB=0 if j<SH else j-SH
-                SE=WindowsN if j+SH>WindowsN else j+SH
-                for k in range(SB,SE):
-                    Smoother[j]+=MixedRDRs[i][k]
-                Smoother[j]/=Smooth
-            MixedRDRs[i]=Smoother
-    if Mean2Adjust:
-        #sf=open("data/SampleCountMeanData.txt","w")
-        #first=True
-        for i in range(SampleN):
-            #if not first:
-            #    print("\n",end="",file=sf)
-            #first=False
-            Mean=0
-            for j in range(WindowsN):
-                Mean+=MixedRDRs[i][j]
-            Mean/=WindowsN
-            ARatio=2.0/Mean
-            for j in range(WindowsN):
-                MixedRDRs[i][j]*=ARatio
-
-    RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
-    Sum=0
-    for i in range(WindowsN):
-        RDWindowStandardsAcc[i]=Sum
-        Sum+=RDWindowStandards[i]
-    RDWindowStandardsAcc[WindowsN]=Sum
+        MixedRDRs.append(array("d",[0]*WindowsN))#Mixed Read depth rate
+    
+    if g.StatLocal:
+        SampleReadCount=TheContig.SampleReadCount
+    else:
+        SampleReadCount=g.SampleReadCount
+    
     RDWindowsAcc=[]
     for i in range(SampleN):
         RDWindowsAcc.append(array("f",[0]*(WindowsN+1)))
-        Sum=0
-        for j in range(WindowsN):
-            RDWindowsAcc[i][j]=Sum
-            Sum+=RDWindows[i][j]
-        RDWindowsAcc[i][WindowsN]=Sum
+    RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
+
+    processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowStandards, RDWindowsAcc, RDWindowStandardsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, TheContig.Ploidies)
+    
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
     TheContig.MixedRDRs=MixedRDRs
