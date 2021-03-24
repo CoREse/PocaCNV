@@ -20,7 +20,7 @@ def getSampleSum(TheContig, SampleI, WBegin, WEnd):
 cdef double CgetSampleSum(double ** CRDWindows, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
     cdef double SampleRD=0
     cdef unsigned long j=0
-    for j from WBegin<=j<=WEnd:
+    for j from WBegin<=j<WEnd:
         SampleRD+=CRDWindows[SampleI][j]
     return SampleRD
 
@@ -130,6 +130,80 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     Smooth=1
     RDWindowAverages=array("d",[0]*WindowsN)
 
+    
+    cdef double * SampleSums=<double *>malloc(SampleN*sizeof(double))
+    cdef double * SampleAverages=<double *>malloc(SampleN*sizeof(double))
+    cdef double * CPloidies=<double *>malloc(SampleN*sizeof(double))
+    for i in range(SampleN):
+        SampleSums[i]=0
+        SampleAverages[i]=0
+        CPloidies[i]=Ploidies[i]
+    SampleReadCountsArray=array("d",SampleReadCount)
+    #cdef size_t SampleReadCountsArrayAddress=ctypes.addressof(SampleReadCountsArray)
+    #cdef unsigned long CSampleReadCount=TheContig.SampleReadCount
+    cdef unsigned long CSampleN=SampleN
+    cdef unsigned long CWindowsN=WindowsN
+    #cdef size_t CSRCA=ctypes.addressof(StatisticalReadCounts)
+    #cdef size_t CSRDWA=ctypes.addressof(StatisticalRDWindowSums)
+    cdef array.array TempArray
+    TempArray=SampleReadCountsArray
+    cdef double* CSampleReadCount=<double*>TempArray.data.as_voidptr
+    TempArray=StatisticalReadCounts
+    cdef double* CStatisticalReadCounts=<double*>TempArray.data.as_voidptr
+    TempArray=StatisticalRDWindowSums
+    cdef double* CStatisticalRDWindowSums=<double*>TempArray.data.as_voidptr
+    TempArray=RDWindowSums
+    cdef double* CRDWindowSums=<double*>TempArray.data.as_voidptr
+    TempArray=RDWindowAverages
+    cdef double* CRDWindowAverages=<double*>TempArray.data.as_voidptr
+    cdef double Standard
+    cdef double WR
+    cdef unsigned long Cj=0,Ci=0
+    cdef double ** CRDWindows=<double **>malloc(SampleN*sizeof(double*))
+    cdef float ** CMixedRDRs=<float **>malloc(SampleN*sizeof(float*))
+    #cdef size_t CTempAddress=ctypes.addressof(RDWindowAverages)
+    cdef size_t TempAddr
+    cdef int CThreadN=g.ThreadN
+    RDWindowsArrays=[]
+    for i in range(SampleN):
+        RDWindowsArrays.append(array("d",RDWindows[i]))
+
+    for i in range(SampleN):
+        #CTempAddress=ctypes.addressof(RDWinodws[i])
+        #TempArray=RDWindows[i]
+        #TempAddr=ctypes.addressof(RDWindows[i])
+        #TempAddr=TempArray.data.as_voidptr
+        TempArray=RDWindowsArrays[i]
+        #CRDWindows[i]=<double*>(TempAddr)
+        CRDWindows[i]=<double*>(TempArray.data.as_voidptr)
+        #CTempAddress=ctypes.addressof(MixedRDRs[i])
+        TempArray=MixedRDRs[i]
+        CMixedRDRs[i]=<float*>(TempArray.data.as_voidptr)
+    TempArray=None
+
+    cdef double * SP=<double *>malloc(2*sizeof(double))
+    '''
+    spf=open("data/cSPs.txt","w")
+    mrdf=open("data/c1stMRDs.txt","w")
+    stf=open("data/cStandards.txt","w")
+    avef=open("data/cAverages.txt","w")
+    wrf=open("data/cWRs.txt","w")
+    wr2f=open("data/cWR2s.txt","w")'''
+    #calc MRDs
+    for Ci in prange(CWindowsN,nogil=True, num_threads=CThreadN, schedule="guided"):
+        for Cj from 0<=Cj<CSampleN:
+            CRDWindowSums[Ci]+=CRDWindows[Cj][Ci]
+            SampleSums[Cj]+=CRDWindows[Cj][Ci]
+        #for Cj from 0<=Cj<100000000:
+        #    CRDWindows[0][0]+=0.1*pow(Cj/100000000,0.5)
+        CRDWindowAverages[Ci]=CRDWindowSums[Ci]/<double>CSampleN
+        CgetSP(SP, CRDWindows, CSampleN, CSampleReadCount, Ci, Ci+1)
+        #oSP=getSP(TheContig,Ci,Ci+1)
+        #print("(%s, %d)"%(SP[0],int(SP[1])),file=spf)
+        CStatisticalRDWindowSums[Ci]=SP[0]
+        CStatisticalReadCounts[Ci]=SP[1]
+    free(SP)
+    
     AllZeroLeft=-1
     AllZeroRight=WindowsN
     Left1=False
@@ -150,70 +224,9 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
         if Right1 and Left1:
             break
     
-    cdef double * SampleSums=<double *>malloc(SampleN*sizeof(double))
-    cdef double * SampleAverages=<double *>malloc(SampleN*sizeof(double))
-    cdef double * CPloidies=<double *>malloc(SampleN*sizeof(double))
-    for i in range(SampleN):
-        SampleSums[i]=0
-        SampleAverages[i]=0
-        CPloidies[i]=Ploidies[i]
-    SampleReadCountsArray=array("d",SampleReadCount)
-    #cdef size_t SampleReadCountsArrayAddress=ctypes.addressof(SampleReadCountsArray)
-    #cdef unsigned long CSampleReadCount=TheContig.SampleReadCount
-    cdef unsigned long CSampleN=SampleN
-    cdef unsigned long CWindowsN=WindowsN
     cdef unsigned long S0Value
     cdef unsigned long CAllZeroLeft=AllZeroLeft
     cdef unsigned long CAllZeroRight=AllZeroRight
-    #cdef size_t CSRCA=ctypes.addressof(StatisticalReadCounts)
-    #cdef size_t CSRDWA=ctypes.addressof(StatisticalRDWindowSums)
-    cdef array.array TempArray
-    TempArray=SampleReadCountsArray
-    cdef double* CSampleReadCount=<double*>TempArray.data.as_voidptr
-    TempArray=StatisticalReadCounts
-    cdef double* CStatisticalReadCounts=<double*>TempArray.data.as_voidptr
-    TempArray=StatisticalRDWindowSums
-    cdef double* CStatisticalRDWindowSums=<double*>TempArray.data.as_voidptr
-    TempArray=RDWindowSums
-    cdef double* CRDWindowSums=<double*>TempArray.data.as_voidptr
-    TempArray=RDWindowAverages
-    cdef double* CRDWindowAverages=<double*>TempArray.data.as_voidptr
-    cdef double Standard
-    cdef double WR
-    cdef unsigned long Cj=0,Ci=0
-    cdef double ** CRDWindows=<double **>malloc(SampleN*sizeof(double*))
-    cdef double ** CMixedRDRs=<double **>malloc(SampleN*sizeof(double*))
-    #cdef size_t CTempAddress=ctypes.addressof(RDWindowAverages)
-    cdef size_t TempAddr
-    cdef int CThreadN=g.ThreadN
-    RDWindowsArrays=[]
-    for i in range(SampleN):
-        RDWindowsArrays.append(array("d",RDWindows[i]))
-
-    for i in range(SampleN):
-        #CTempAddress=ctypes.addressof(RDWinodws[i])
-        #TempArray=RDWindows[i]
-        #TempAddr=ctypes.addressof(RDWindows[i])
-        #TempAddr=TempArray.data.as_voidptr
-        TempArray=RDWindowsArrays[i]
-        #CRDWindows[i]=<double*>(TempAddr)
-        CRDWindows[i]=<double*>(TempArray.data.as_voidptr)
-        #CTempAddress=ctypes.addressof(MixedRDRs[i])
-        TempArray=MixedRDRs[i]
-        CMixedRDRs[i]=<double*>(TempArray.data.as_voidptr)
-    TempArray=None
-
-    cdef double * SP=<double *>malloc(2*sizeof(double))
-    #calc MRDs
-    for i in range(WindowsN):
-        for j in range(SampleN):
-            CRDWindowSums[i]+=CRDWindows[j][i]
-            SampleSums[j]+=CRDWindows[j][i]
-        CRDWindowAverages[i]=CRDWindowSums[i]/<double>SampleN
-        CgetSP(SP, CRDWindows, CSampleN, CSampleReadCount, Ci, Ci+1)
-        CStatisticalRDWindowSums[i]=SP[0]
-        CStatisticalReadCounts[i]=SP[1]
-    free(SP)
 
     #SampleSumAverage=0
     #for j in range(SampleN):
@@ -221,8 +234,19 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     #    SampleSumAverage+=SampleSums[j]
     #SampleSumAverage/=SampleN
 
+    '''srdf=open("data/cSRDWindowsSums.txt","w")
+    srcf=open("data/cSRCounts.txt","w")
+    samrcf=open("data/cSampleReadCounts.txt","w")
+    rdwf=open("data/c1stRDWins.txt","w")
+    for i in range(WindowsN):
+        print(CStatisticalRDWindowSums[i],file=srdf)
+        print(int(CStatisticalReadCounts[i]),file=srcf)
+        print(CRDWindows[0][i],file=rdwf)
+        print(CRDWindowAverages[i],file=avef)
+    for i in range(SampleN):
+        print(int(SampleReadCount[i]),file=samrcf)'''
     print("Cython for start.",file=sys.stderr)
-    for Ci in range(CSampleN):#,nogil=True, num_threads=CThreadN):
+    for Ci in prange(CSampleN,nogil=True, num_threads=CThreadN):
         for Cj from 0<=Cj<CWindowsN:
         #for j in prange(WindowsN):
             S0Value=0
@@ -230,14 +254,24 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
                 S0Value=1
             Standard=CgetNormalRDDirect(CStatisticalReadCounts,CStatisticalRDWindowSums,CSampleReadCount,Ci,Cj)
             #Standard2=getNormalRD(TheContig,Ci,Cj)
+            #print(Standard,file=stf)
             #if Standard!=Standard2:
-            #    print("not identical!",i,j,g.StatisticalReadCounts[Cj],g.StatisticalRDWindowSums[Cj],TheContig.SampleReadCount[Ci],Standard2,CStatisticalReadCounts[Cj],CStatisticalRDWindowSums[Cj],CSampleReadCount[Ci],Standard,file=sys.stderr)
+            #    print("not identical!",Ci,Cj,g.StatisticalReadCounts[Cj],g.StatisticalRDWindowSums[Cj],TheContig.SampleReadCount[Ci],Standard2,CStatisticalReadCounts[Cj],CStatisticalRDWindowSums[Cj],CSampleReadCount[Ci],Standard, WR, WR2,file=sys.stderr)
             #    exit(0)
             WR=CRDWindows[Ci][Cj]/Standard if Standard!=0 else S0Value
+            #WR2=RDWindows[Ci][Cj]/Standard2 if Standard2!=0 else S0Value
+            #if WR!=WR2:
+            #    print("WR not identical!",Ci,Cj,g.StatisticalReadCounts[Cj],g.StatisticalRDWindowSums[Cj],TheContig.SampleReadCount[Ci],Standard2,CStatisticalReadCounts[Cj],CStatisticalRDWindowSums[Cj],CSampleReadCount[Ci],Standard,file=sys.stderr)
+            #    exit(0)
+            #print(WR,file=wrf,end=" ")
             if Standard==0 and CRDWindows[Ci][Cj]!=0:
                 WR=CRDWindows[Ci][Cj]/CRDWindowAverages[Cj]
+            #print(WR,file=wrf)
+            #print(WR*2,file=wr2f)
             CMixedRDRs[Ci][Cj]=WR
-            CMixedRDRs[i][j]*=CPloidies[i]
+            CMixedRDRs[Ci][Cj]*=CPloidies[Ci]
+    #for i in range(WindowsN):
+    #    print(CMixedRDRs[0][i],file=mrdf)
     free(CRDWindows)
     free(CMixedRDRs)
     #for i in range(SampleN):

@@ -12,7 +12,7 @@ import multiprocessing as mp
 import subprocess
 from sara import SaRa
 
-import pyximportcpp; pyximportcpp.install()
+#import pyximportcpp; pyximportcpp.install()
 from rdprocessing import *
 
 Deploid=set(["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"\
@@ -226,6 +226,9 @@ def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
     sys.stderr.flush()
+    #for i in range(len(SampleMRDRs)):
+    #    print(SampleMRDRs[i])
+    #exit(0)
     SampleIntervals=[]
     CutOffs=segmentation(SampleMRDRs)
     Last=0
@@ -241,7 +244,7 @@ def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
-    if True or g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
+    if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
             Intervals[i]=makeSampleRDIntervals(TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
@@ -403,7 +406,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
 
     MixedRDRs=[]
     for i in range(SampleN):
-        MixedRDRs.append(array("d",[0]*WindowsN))#Mixed Read depth rate
+        MixedRDRs.append(array("f",[0]*WindowsN))#Mixed Read depth rate
     
     if g.StatLocal:
         SampleReadCount=TheContig.SampleReadCount
