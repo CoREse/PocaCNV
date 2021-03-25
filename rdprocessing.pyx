@@ -1,7 +1,7 @@
 #!python
 #cython: language_level=3, std=c++11
 cimport cython
-from cython.parallel import prange
+from cython.parallel import parallel,prange
 import ctypes
 from libc.stdlib cimport malloc,free
 from libc.math cimport pow,fabs
@@ -181,7 +181,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
         CMixedRDRs[i]=<float*>(TempArray.data.as_voidptr)
     TempArray=None
 
-    cdef double * SP=<double *>malloc(2*sizeof(double))
+    cdef double * SP
     '''
     spf=open("data/cSPs.txt","w")
     mrdf=open("data/c1stMRDs.txt","w")
@@ -190,19 +190,21 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     wrf=open("data/cWRs.txt","w")
     wr2f=open("data/cWR2s.txt","w")'''
     #calc MRDs
-    for Ci in prange(CWindowsN,nogil=True, num_threads=CThreadN, schedule="guided"):
-        for Cj from 0<=Cj<CSampleN:
-            CRDWindowSums[Ci]+=CRDWindows[Cj][Ci]
-            SampleSums[Cj]+=CRDWindows[Cj][Ci]
-        #for Cj from 0<=Cj<100000000:
-        #    CRDWindows[0][0]+=0.1*pow(Cj/100000000,0.5)
-        CRDWindowAverages[Ci]=CRDWindowSums[Ci]/<double>CSampleN
-        CgetSP(SP, CRDWindows, CSampleN, CSampleReadCount, Ci, Ci+1)
-        #oSP=getSP(TheContig,Ci,Ci+1)
-        #print("(%s, %d)"%(SP[0],int(SP[1])),file=spf)
-        CStatisticalRDWindowSums[Ci]=SP[0]
-        CStatisticalReadCounts[Ci]=SP[1]
-    free(SP)
+    with nogil, parallel(num_threads=CThreadN):
+        SP=<double *>malloc(2*sizeof(double))
+        for Ci in prange(CWindowsN, schedule="guided"):
+            for Cj from 0<=Cj<CSampleN:
+                CRDWindowSums[Ci]+=CRDWindows[Cj][Ci]
+                SampleSums[Cj]+=CRDWindows[Cj][Ci]
+            #for Cj from 0<=Cj<100000000:
+            #    CRDWindows[0][0]+=0.1*pow(Cj/100000000,0.5)
+            CRDWindowAverages[Ci]=CRDWindowSums[Ci]/<double>CSampleN
+            CgetSP(SP, CRDWindows, CSampleN, CSampleReadCount, Ci, Ci+1)
+            #oSP=getSP(TheContig,Ci,Ci+1)
+            #print("(%s, %d)"%(SP[0],int(SP[1])),file=spf)
+            CStatisticalRDWindowSums[Ci]=SP[0]
+            CStatisticalReadCounts[Ci]=SP[1]
+        free(SP)
     
     AllZeroLeft=-1
     AllZeroRight=WindowsN
