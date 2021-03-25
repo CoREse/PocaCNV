@@ -244,7 +244,7 @@ def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
-    if RParallel:
+    if g.RParallel:
         CutOffs=dnacopy_cbs_multi(MixedRDRs)
         Intervals=[]
         for i in range(len(MixedRDRs)):
