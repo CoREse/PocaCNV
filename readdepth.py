@@ -244,6 +244,23 @@ def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None
     return SampleIntervals
 
 def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
+    if RParallel:
+        CutOffs=dnacopy_cbs_multi(MixedRDRs)
+        Intervals=[]
+        for i in range(len(MixedRDRs)):
+            Ploidy=TheContig.Ploidies[i]
+            Intervals.append([])
+            Last=0
+            for End,Ave in CutOffs[i]:
+                Ave=0
+                for j in range(Last,End):
+                    Ave+=MixedRDRs[i][j]
+                Ave/=End-Last
+                Intervals[i].append(RDInterval(i,Last,End,Ave,Ploidy,None,g.RDWindowSize))
+                Last=End
+            Intervals[i].sort(key=lambda I:I.WBegin)
+        TheContig.Intervals=Intervals
+        return Intervals
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
@@ -290,6 +307,40 @@ def dnacopy_cbs(data):
     CutOffs=[]
     for i in range(len(ends)):
         CutOffs.append((ends[i],means[i]))
+    return CutOffs
+
+def dnacopy_cbs_multi(data):
+    robjects.r("rm(list = ls(all.names=TRUE))")
+    robjects.r('rddatalist<-vector("list",%s)'%len(data))
+    robjects.r("ThreadN<-%s"%g.ThreadN)
+    print(gettime()+"Transfering data to R...",file=sys.stderr)
+    for i in range(len(data)):
+        s=data[i]
+        datastring=""
+        first=True
+        for d in s:
+            if not first:
+                datastring+=","
+            first=False
+            #datastring+="%.7s"%(d)#math.log2(d/2.0 if d!=0 else sys.float_info.min))
+            datastring+="%.7s"%(math.log2(d/2.0 if d!=0 else sys.float_info.min))
+        robjects.r("rddatalist[[%s]]<-data.frame(mrd=c(%s))"%(i+1,datastring))
+    global script
+    if script==None:
+        sf=open("dnacopy_cbs_multi.r","r")
+        script=str(sf.read())
+        sf.close()
+    print(gettime()+"Segmenting...",file=sys.stderr)
+    xs=robjects.r(script)
+    print(gettime()+"Segmented! Making intervals...",file=sys.stderr)
+    CutOffs=[]
+    for x in xs:
+        CutOffs.append([])
+        datavec=x[1]
+        ends=datavec[3]
+        means=datavec[5]
+        for i in range(len(ends)):
+            CutOffs[-1].append((ends[i],means[i]))
     return CutOffs
 
 def extractEvidences(Intervals):

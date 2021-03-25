@@ -23,6 +23,7 @@ EDataName=None
 EDataPath="data"
 GenomeLength=None
 MyGenome=None
+RParallel=False
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7
