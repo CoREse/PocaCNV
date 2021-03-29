@@ -59,7 +59,7 @@ test22: cython
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
 test1:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C 1 > data/test1.vcf
-	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 data/test1.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 -SF /data/0/cre/CHS/samples.txt data/test1.vcf
 testX:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -J 16 -C X > data/testX.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C X data/testX.vcf
