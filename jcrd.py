@@ -148,14 +148,15 @@ if __name__ == "__main__":
         UnmappedCount=0
         SampleNames=[]
 
-        RDFPaths=readRDDataAndSaveRDF(mygenome,g.SamplePaths)#return RDF SamplePaths
+        #RDFPaths=readRDDataAndSaveRDF(mygenome,g.SamplePaths)#return RDF SamplePaths
+        SDPaths=readSamAndSaveSD(mygenome,g.SamplePaths)#return SD SamplePaths
         if g.WriteRDDataOnly:
             exit(0)
-        readRDDataAll(SampleNames,RDFPaths)
-        for i in range(len(RDFPaths)):
-            if g.WriteRDDataTo!=None:
+        readSDDataAll(SampleNames,SDPaths)
+        if g.WriteRDDataTo!=None:
+            for i in range(len(SDPaths)):
                 print(gettime()+"Storing rd data for %s to %s..."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
-                writeSampleRDData(mygenome,SampleNames[-1],SampleIndex,ReadCount, g.RDWindowSize, g.SamplePaths[i],g.WriteRDDataTo)
+                writeSampleSDData(mygenome,SampleNames[-1],SampleIndex,ReadCount, g.RDWindowSize, g.SamplePaths[i],g.WriteRDDataTo)
                 print(gettime()+"Stored rd data for %s to %s."%(SampleNames[-1],g.WriteRDDataTo),file=sys.stderr)
             SampleIndex+=1
         mygenome.calcContigReadCounts()

@@ -16,6 +16,7 @@ class Contig:
         self.SampleReadCount=self.ContigSampleReadCounts
         self.Genome=Genome
         self.Ploidies=[]
+        self.DRPs=[]
     
     def calcContigReadCount(self):
         self.ContigReadCount=0
@@ -27,8 +28,8 @@ class Contig:
         return new       
 
     def addSample(self,name=""):
-        #self.RDWindows.append(array("f",[0]*self.Length))
-        self.RDWindows.append(multiprocessing.sharedctypes.RawArray("f",[0]*self.Length))
+        self.RDWindows.append(array("f",[0]*self.Length))
+        #self.RDWindows.append(multiprocessing.sharedctypes.RawArray("f",[0]*self.Length))
         self.SampleNames.append(name)
         self.ContigSampleReadCounts.append(0)
         self.Ploidies.append(2)
