@@ -59,18 +59,22 @@ def readSamToSD(thegenome, FilePath, ReferencePath, WindowSize):
     ReadCount=0
     SampleIndex=0
     UnmappedCount=0
+    LastRefId=-1
     try:
         for read in SamFile:
             ReadCount+=1
-            read: pysam.AlignedSegment
+            #read: pysam.AlignedSegment
             if read.is_unmapped:
                 UnmappedCount+=1
             else:
-                TheContig=thegenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
+                if LastRefId!=read.reference_id:
+                    TheContig=thegenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
+                    LastRefId=read.reference_id
+                #TheContig=thegenome.get(read.reference_name)#This is slightly faster than using getcontigid, and is correct at all time
                 if TheContig==None:
                     continue
                 if read.is_paired and read.is_read1 and (not read.mate_is_unmapped):
-                    isize=read.template_length
+                    isize=abs(read.template_length)
                     if isize > g.MedianInsertionSize+3*g.ISSD:
                         TheContig.DRPs.append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start))
                 TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
@@ -100,6 +104,7 @@ def writeSampleSDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize
     return
 
 def readSampleSDData(mygenome, SampleNames, FileName):
+    print(gettime()+"Reading reads from %s..."%(FileName),file=sys.stderr)
     SDFile=open(FileName,"rb")
     SampleData=pickle.load(SDFile)
     SDFile.close()
