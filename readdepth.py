@@ -11,6 +11,7 @@ import math
 import multiprocessing as mp
 import subprocess
 from sara import SaRa
+from drpprocessing import *
 
 #import pyximportcpp; pyximportcpp.install()
 from rdprocessing import *
@@ -222,9 +223,9 @@ def scanConZero(SampleMRDRs):
                 Begin=None
     return Ints
 
-def makeSampleRDIntervals(ContigName,SampleI,SampleName,Ploidy,RDWindowSize=None):
+def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=None):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
-    SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
+    #SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
     sys.stderr.flush()
     #for i in range(len(SampleMRDRs)):
     #    print(SampleMRDRs[i])
@@ -264,13 +265,13 @@ def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use m
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
         Intervals=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            Intervals[i]=makeSampleRDIntervals(TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
+            Intervals[i]=makeSampleRDIntervals(MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
     else:
         ctx=mp.get_context("fork")
         pool=ctx.Pool(g.ThreadN)
         args=[]
         for i in range(len(MixedRDRs)):
-            args.append((TheContig.Name,i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
+            args.append((MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
         addPool(pool)
         Intervals=pool.starmap(makeSampleRDIntervals,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
@@ -481,7 +482,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     if NormalizationOnly:
         return MixedRDRs
 
-    RDICandidates=makeRDICandidates(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)))
+    RDICandidates=makeRDICandidates(processEvidencesWithDRPs(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
     SegSD=False
     if SegSD:
         SDCandidates=getSDCandidates(TheContig)

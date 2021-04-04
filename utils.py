@@ -215,6 +215,7 @@ class Evidence:
         self.Data=Data
         self.Begin=Begin
         self.End=End
+        self.SupportedDRPs=[]
         self.analyzeData()
     
     def setData(self, Type, Data):

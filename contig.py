@@ -32,10 +32,18 @@ class Contig:
         #self.RDWindows.append(multiprocessing.sharedctypes.RawArray("f",[0]*self.Length))
         self.SampleNames.append(name)
         self.ContigSampleReadCounts.append(0)
+        self.DRPs.append([])
         self.Ploidies.append(2)
     
     def changeSampleName(self, Index, Name):
         self.SampleNames[Index]=Name
+    
+    def clearMemory(self):
+        self.RDWindows=None
+        self.MixedRDRs=None
+    
+    def getNew(self,TheGenome):
+        return Contig(self.Name,self.NLength,self.RDWindowSize,TheGenome)
     """
     def __getitem__(self,i):
         return self.RDWindows[i]
@@ -118,3 +126,6 @@ class Genome:
             c.calcContigReadCount()
     def setGenomeLength(self,RefLength):
         self.GenomeLength=RefLength
+    def clearMemory(self):
+        for c in self.Contigs:
+            c.clearMemory()

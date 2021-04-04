@@ -42,12 +42,15 @@ for line in EDDataFile:
         CN=sl[9]
         Confidence=sl[10]
         CScore=sl[11]
+        HasSDRP=sl[12]
+        HasMultiSDRP=sl[13]
+        SDRPRatio=sl[14]
         if not First:
             print("")
         First=False
         if isFine(SampleName,Begin,End):
-            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,1),end="")
+            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,1),end="")
         else:
-            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,0),end="")
+            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,0),end="")
 
 EDDataFile.close()

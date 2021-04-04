@@ -76,7 +76,9 @@ def readSamToSD(thegenome, FilePath, ReferencePath, WindowSize):
                 if read.is_paired and read.is_read1 and (not read.mate_is_unmapped):
                     isize=abs(read.template_length)
                     if isize > g.MedianInsertionSize+3*g.ISSD:
-                        TheContig.DRPs.append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start))
+                        TheContig.DRPs[SampleIndex].append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start,0))
+                    elif isize < g.MedianInsertionSize-3*g.ISSD:
+                        TheContig.DRPs[SampleIndex].append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start,1))
                 TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
                 TheContig.ContigSampleReadCounts[SampleIndex]+=1
                 #ReadCount+=1
@@ -84,6 +86,7 @@ def readSamToSD(thegenome, FilePath, ReferencePath, WindowSize):
         print("WARN:[Sample:%s] %s"%(Name,e),file=sys.stderr)
         return False
     SamFile.close()
+    TheContig.DRPs[SampleIndex].sort(key=lambda d: d.Start)
     print(gettime()+"Sample %s read."%(Name),file=sys.stderr)
     print(gettime()+"Storing sd data for %s..."%(Name),file=sys.stderr)
     writeSampleSDData(thegenome,Name,SampleIndex,ReadCount,WindowSize,FilePath)
@@ -98,7 +101,7 @@ def writeSampleSDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize
     SampleData["RDWindowSize"]=WindowSize
     SampleData["Contigs"]=[]
     for c in mygenome.Contigs:
-        SampleData["Contigs"].append({"Name":c.Name,"Length":c.Length,"RDWindows":c.RDWindows[SampleI],"ContigSampleReadCounts":c.ContigSampleReadCounts[SampleI],"DRPs":c.DRPs})
+        SampleData["Contigs"].append({"Name":c.Name,"Length":c.Length,"RDWindows":c.RDWindows[SampleI],"ContigSampleReadCounts":c.ContigSampleReadCounts[SampleI],"DRPs":c.DRPs[SampleI]})
     pickle.dump(SampleData,sdfile)
     sdfile.close()
     return
@@ -121,13 +124,14 @@ def readSampleSDData(mygenome, SampleNames, FileName):
         TheContig.RDWindows[-1]=c["RDWindows"]
         if TheContig.Length!=c["Length"]:
             print(gettime()+"WARN: contig %s length doesn't matchup."%c["Name"],file=sys.stderr)
-        TheContig.DRPs=c["DRPs"]
+        TheContig.DRPs[-1]=c["DRPs"]
         TheContig.ContigSampleReadCounts[-1]=c["ContigSampleReadCounts"]
     SampleNames.append(SampleData["SampleName"])
+    g.SampleNameIndexes[SampleData["SampleName"]]=len(TheContig.RDWindows)-1
     return
 
-def readSDDataAll(SampleNames, FileNames):
-    mygenome=g.MyGenome
+def readSDDataAll(TheGenome, SampleNames, FileNames):
+    mygenome=TheGenome
     for i in range(len(FileNames)):
         readSampleSDData(mygenome,SampleNames,FileNames[i])
     print(gettime()+"SDs read. "+getMemUsage(),file=sys.stderr)

@@ -24,6 +24,7 @@ EDataPath="data"
 GenomeLength=None
 MyGenome=None
 RParallel=False
+SampleNameIndexes={}
 class Parameters:
     ScoreThreshold=0.99
     SampleConfidenceThreshold=0.7

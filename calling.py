@@ -29,21 +29,6 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
     return Scores
 
 def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
-    if (SegFileNNumber[0]!=None):
-        print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore),file=SegFileNNumber[0])
-    #[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,Label]
-    """ChrNo=TheContig.Name.upper()
-    try:
-        if ChrNo[:3]=="CHR":
-            ChrNo=ChrNo[3:]
-        if ChrNo=="X":
-            ChrNo=23
-        elif ChrNo=="Y":
-            ChrNo=24
-        else:
-            ChrNo=int(ChrNo)
-    except:
-        ChrNo=0"""
     SegNum=SegFileNNumber[1]
     ContigLength=TheContig.NLength
     #SiblingCount
@@ -62,6 +47,13 @@ def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     MultiSibling=1 if SiblingCount>1 else 0
     SampleCount=len(TheContig.SampleNames)
     SiblingRatio=SiblingCount/SampleCount
+    SDRPN=len(E.SupportedDRPs)
+    ContigSampleCoverage=TheContig.ContigSampleReadCounts[E.Sample]/TheContig.NLength
+    SDRPRatio=SDRPN/ContigSampleCoverage
+    HasSDRP=1 if SDRPN>0 else 0
+    HasMultiSDRP=1 if SDRPN>1 else 0
+    if (SegFileNNumber[0]!=None):
+        print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio),file=SegFileNNumber[0])
     DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
     #return torch.Tensor([SegFileNNumber[1],TheContig.NLength,SiblingCount,E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,ChrNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0])
     return torch.Tensor(DataItem)

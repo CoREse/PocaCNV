@@ -17,7 +17,7 @@ def getSampleSum(TheContig, SampleI, WBegin, WEnd):
         SampleRD+=TheContig.RDWindows[SampleI][j]
     return SampleRD
 
-cdef double CgetSampleSum(double ** CRDWindows, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
+cdef double CgetSampleSum(float ** CRDWindows, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
     cdef double SampleRD=0
     cdef unsigned long j=0
     for j from WBegin<=j<WEnd:
@@ -25,7 +25,7 @@ cdef double CgetSampleSum(double ** CRDWindows, unsigned long SampleI, unsigned 
     return SampleRD
 
 from libcpp.unordered_set cimport unordered_set
-cdef void CgetSP(double *SP, double ** CRDwindows, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
+cdef void CgetSP(double *SP, float ** CRDwindows, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
     cdef double SRS=0,SRC=0
     if WEnd<=WBegin:
         SP[0]=0
@@ -159,23 +159,24 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     cdef double Standard
     cdef double WR
     cdef unsigned long Cj=0,Ci=0
-    cdef double ** CRDWindows=<double **>malloc(SampleN*sizeof(double*))
+    cdef float ** CRDWindows=<float **>malloc(SampleN*sizeof(float*))
     cdef float ** CMixedRDRs=<float **>malloc(SampleN*sizeof(float*))
     #cdef size_t CTempAddress=ctypes.addressof(RDWindowAverages)
     cdef size_t TempAddr
     cdef int CThreadN=g.ThreadN
-    RDWindowsArrays=[]
-    for i in range(SampleN):
-        RDWindowsArrays.append(array("d",RDWindows[i]))
+    #RDWindowsArrays=[]
+    #for i in range(SampleN):
+    #    RDWindowsArrays.append(array("d",RDWindows[i]))
 
     for i in range(SampleN):
         #CTempAddress=ctypes.addressof(RDWinodws[i])
         #TempArray=RDWindows[i]
         #TempAddr=ctypes.addressof(RDWindows[i])
         #TempAddr=TempArray.data.as_voidptr
-        TempArray=RDWindowsArrays[i]
+        #TempArray=RDWindowsArrays[i]
+        TempArray=RDWindows[i]
         #CRDWindows[i]=<double*>(TempAddr)
-        CRDWindows[i]=<double*>(TempArray.data.as_voidptr)
+        CRDWindows[i]=<float*>(TempArray.data.as_voidptr)
         #CTempAddress=ctypes.addressof(MixedRDRs[i])
         TempArray=MixedRDRs[i]
         CMixedRDRs[i]=<float*>(TempArray.data.as_voidptr)
