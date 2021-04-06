@@ -228,7 +228,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
             break
     
     cdef unsigned long S0Value
-    cdef unsigned long CAllZeroLeft=AllZeroLeft
+    cdef long CAllZeroLeft=AllZeroLeft
     cdef unsigned long CAllZeroRight=AllZeroRight
 
     #SampleSumAverage=0
