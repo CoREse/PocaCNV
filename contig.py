@@ -35,6 +35,13 @@ class Contig:
         self.DRPs.append([])
         self.Ploidies.append(2)
     
+    def addSampleWithData(self,SampleName,SampleRDWindows,ContigSampleReadCount,SampleDRPs,Ploidy):
+        self.RDWindows.append(SampleRDWindows)
+        self.SampleNames.append(SampleName)
+        self.ContigSampleReadCounts.append(ContigSampleReadCount)
+        self.DRPs.append(SampleDRPs)
+        self.Ploidies.append(Ploidy)
+    
     def changeSampleName(self, Index, Name):
         self.SampleNames[Index]=Name
     
@@ -60,6 +67,7 @@ class Genome:
         self.SampleNames=[]
         self.SampleN=0
         self.RefID=[]
+        self.GenomeLength=None
     
     '''
     def duplicate(self):
@@ -78,6 +86,7 @@ class Genome:
             new.Contigs.append(c.genVacant(self))
         new.Index=self.Index.copy()
         new.RefID=self.RefID.copy()
+        new.GenomeLength=self.GenomeLength
         return new
 
     def getRefID(self,ContigID):

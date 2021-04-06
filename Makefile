@@ -54,6 +54,9 @@ wotest:
 qtest108:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 2000 ~/data/0/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/qtest108.vcf
+test2122: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 -C 21 > data/test2122.vcf
+	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test2122.vcf
 test22: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf

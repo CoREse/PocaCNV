@@ -106,14 +106,14 @@ def writeSampleSDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize
     sdfile.close()
     return
 
-def readSampleSDData(mygenome, SampleNames, FileName):
+def readSampleSDData(mygenome, FileName):
     print(gettime()+"Reading reads from %s..."%(FileName),file=sys.stderr)
     SDFile=open(FileName,"rb")
     SampleData=pickle.load(SDFile)
     SDFile.close()
 
-    mygenome.addSample(SampleData["SampleName"])
-    g.SampleReadCount.append(SampleData["SampleReadCount"])
+    SampleName=SampleData["SampleName"]
+    mygenome.addSample(SampleName)
     if g.RDWindowSize!=SampleData["RDWindowSize"]:
         print(gettime()+"Wrong RDWindowSize of SD file %s, quitting..."%FileName,file=sys.stderr)
         exit(0)
@@ -126,15 +126,45 @@ def readSampleSDData(mygenome, SampleNames, FileName):
             print(gettime()+"WARN: contig %s length doesn't matchup."%c["Name"],file=sys.stderr)
         TheContig.DRPs[-1]=c["DRPs"]
         TheContig.ContigSampleReadCounts[-1]=c["ContigSampleReadCounts"]
-    SampleNames.append(SampleData["SampleName"])
-    g.SampleNameIndexes[SampleData["SampleName"]]=len(TheContig.RDWindows)-1
-    return
+    return (SampleName,SampleData["SampleReadCount"],mygenome)
 
 def readSDDataAll(TheGenome, SampleNames, FileNames):
     mygenome=TheGenome
-    for i in range(len(FileNames)):
-        readSampleSDData(mygenome,SampleNames,FileNames[i])
-    print(gettime()+"SDs read. "+getMemUsage(),file=sys.stderr)
+    if g.ThreadN==1:
+        for i in range(len(FileNames)):
+            Result=readSampleSDData(mygenome,FileNames[i])
+            g.SampleReadCount.append(Result[1])
+            SampleNames.append(Result[0])
+            g.SampleNameIndexes[Result[0]]=i
+        print(gettime()+"SDs read. "+getMemUsage(),file=sys.stderr)
+    else:
+        ctx=mp.get_context("fork")
+        pool=ctx.Pool(g.ThreadN)
+        args=[]
+        for i in range(len(FileNames)):
+            args.append((mygenome.genVacant(),FileNames[i]))
+        addPool(pool)
+        Results=pool.starmap(readSampleSDData,args)
+        delPool()
+        pool.terminate()
+        for j in range(len(Results)):
+            r=Results[j]
+            SampleName=r[0]
+            g.SampleReadCount.append(r[1])
+            SampleNames.append(SampleName)
+            g.SampleNameIndexes[SampleName]=j
+            r=r[2]
+            #SampleName=r.SampleNames[0]
+            print(r.SampleNames,file=sys.stderr)
+            for i in range(len(mygenome.Contigs)):
+                c=mygenome.Contigs[i]
+                SampleRDWindows=r.Contigs[i].RDWindows[0]
+                ContigSampleReadCount=r.Contigs[i].ContigSampleReadCounts[0]
+                SampleDRPs=r.Contigs[i].DRPs[0]
+                Ploidy=r.Contigs[i].Ploidies[0]
+                c.addSampleWithData(SampleName,SampleRDWindows,ContigSampleReadCount,SampleDRPs,Ploidy)
+            mygenome.SampleNames.append(SampleName)
+            mygenome.SampleN+=1
 
 def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
     print(gettime()+"Reading reads from %s..."%(FilePath),file=sys.stderr)
