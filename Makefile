@@ -60,17 +60,23 @@ test2122: cython
 test22: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
-test1:
-	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C 1 > data/test1.vcf
+test1: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 1 > data/test1.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 -SF /data/0/cre/CHS/samples.txt data/test1.vcf
 testX:
-	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -J 16 -C X > data/testX.vcf
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -J 16 -C X > data/testX.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C X data/testX.vcf
 testY:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C Y > data/testY.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C Y data/testY.vcf
 chsedata: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -EN CHS > data/edata.vcf
+clmedata: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/clmedata.vcf 2> data/clmedata.log
+cdxedata: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/cdxedata.vcf 2> data/cdxedata.log
+clmwhole: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CLM/*CLM*.cram -EN CLM > data/clmwhole.vcf 2> data/clmwhole.log
 debug:
 	bash debugs/debug.sh
 bench:

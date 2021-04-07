@@ -83,7 +83,7 @@ class Genome:
         new=Genome()
         new.Name=self.Name
         for c in self.Contigs:
-            new.Contigs.append(c.genVacant(self))
+            new.Contigs.append(c.genVacant(new))
         new.Index=self.Index.copy()
         new.RefID=self.RefID.copy()
         new.GenomeLength=self.GenomeLength

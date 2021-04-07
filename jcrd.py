@@ -145,6 +145,7 @@ if __name__ == "__main__":
     for ci in range(len(mygenome.Contigs)):
         print(gettime()+"Starting call for contig %s..."%(mygenome.Contigs[ci].Name),file=sys.stderr)
         ContigGenome=Genome(mygenome.Name)
+        ContigGenome.setGenomeLength(mygenome.GenomeLength)
         TheContig=mygenome.Contigs[ci].getNew(ContigGenome)
         ContigGenome.RefID.append(mygenome.RefID[ci])
         ContigGenome.append(TheContig)

@@ -154,8 +154,6 @@ def readSDDataAll(TheGenome, SampleNames, FileNames):
             SampleNames.append(SampleName)
             g.SampleNameIndexes[SampleName]=j
             r=r[2]
-            #SampleName=r.SampleNames[0]
-            print(r.SampleNames,file=sys.stderr)
             for i in range(len(mygenome.Contigs)):
                 c=mygenome.Contigs[i]
                 SampleRDWindows=r.Contigs[i].RDWindows[0]
