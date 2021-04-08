@@ -2,10 +2,14 @@
 #include <stdio.h>
 #include <omp.h>
 #include <stdlib.h>
-#include "include/stats.hpp"
-//#include <boost/math/distributions/poisson.hpp>
+//#include "include/stats.hpp"
+#include <boost/math/distributions/poisson.hpp>
 //#include <gsl/gsl_randist.h>
 //#include <gsl/gsl_cdf.h>
+#include <unordered_set>
+#include <math.h>
+#include <stdlib.h>
+using namespace std;
 
 struct Cand
 {
@@ -14,6 +18,8 @@ struct Cand
     int *EEs;
     int *SampleIs;
     int *ECNs;
+    int *EMUs;
+    int *EMUSs;
     double *PassCs;
     double *Confs;
     Cand():Size(0),EBs(NULL),EEs(NULL),SampleIs(NULL),ECNs(NULL),PassCs(NULL),Confs(NULL){}
@@ -27,6 +33,8 @@ void allocCand(Cand *a)
         a->EEs=(int*)malloc(sizeof(int)*a->Size);
         a->SampleIs=(int*)malloc(sizeof(int)*a->Size);
         a->ECNs=(int*)malloc(sizeof(int)*a->Size);
+        a->EMUs=(int*)malloc(sizeof(int)*a->Size);
+        a->EMUSs=(int*)malloc(sizeof(int)*a->Size);
         a->PassCs=(double*)malloc(sizeof(double)*a->Size);
         a->Confs=(double*)malloc(sizeof(double)*a->Size);
     }
@@ -37,10 +45,13 @@ void freeCand(Cand *a)
     if (a->EEs!=NULL) free(a->EEs);
     if (a->SampleIs!=NULL) free(a->SampleIs);
     if (a->ECNs!=NULL) free(a->ECNs);
+    if (a->EMUs!=NULL) free(a->EMUs);
+    if (a->EMUSs!=NULL) free(a->EMUSs);
     if (a->PassCs!=NULL) free(a->PassCs);
     if (a->Confs!=NULL) free(a->Confs);
 }
 #define min(x,y) (x>y?y:x)
+#define max(x,y) (x>y?x:y)
 double pcdf(int mu, int mus);
 double mulikely(int mu, int mus)
 {
@@ -51,51 +62,116 @@ double mulikely(int mu, int mus)
 inline double poisson(int x,int lambda)
 {
     if (lambda==0) return 0.0;
+    auto dist=boost::math::poisson(double(lambda));
+    return boost::math::pdf(dist,x);
     //return gsl_ran_poisson_pdf(x,lambda);
-    return stats::dpois(x,lambda);
+    //return stats::dpois(x,lambda);
     //return boost::math::pdf(x,lambda);
     //return pow(lambda,x)/tgamma(x+1)*exp(-lambda);
 }
 inline double pcdf(int mus, int mu)
 {
-    if (mu==0) return 0.0;
+    if (mu==0) return 1.0;
+    auto dist=boost::math::poisson(mu);
+    return boost::math::cdf(dist,mus);
     //return gsl_cdf_poisson_P(mus,mu);
-    return stats::ppois(mus,mu);
+    //return stats::ppois(mus,mu);
     //double Result=0.0;
     //for (int i=0;i<=mus;++i) Result+=poisson(i,mu);
     //return Result;
 }
 
-double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int SampleN,int WindowN,double* CNPriors,int CNPN)
+inline double CgetSampleSum(double ** CRDWindowsAcc, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd)
 {
-    double Score=0,P=1,CN2L=1;
+    return CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin];
+}
+
+inline void CgetSP(double *SP, double ** CRDwindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8)
+{
+    double SRS=0,SRC=0;
+    if (WEnd<=WBegin)
+    {
+        SP[0]=0;
+        SP[1]=0;
+    }
+    double *SampleRDs=(double*)malloc(SampleN*sizeof(double));
+    unsigned long i,j;
+    for (int i=0;i<SampleN;++i)
+    {
+        SampleRDs[i]=CgetSampleSum(CRDwindowsAcc, i, WBegin, WEnd);
+        SRS+=SampleRDs[i];
+        SRC+=SampleReadCount[i];
+    }
+    double EstimatedP=SRS/SRC;
+    unordered_set<unsigned long> RemovedSet;
+    double LastP=0;
+    double *SampleSTDs=(double*)malloc(SampleN*sizeof(double));
+    while (LastP!=EstimatedP)
+    {
+        RemovedSet.clear();
+        for (int i=0;i<SampleN;++i)
+        {
+            SampleSTDs[i]=EstimatedP*SampleReadCount[i];
+            if (fabs(SampleRDs[i]-SampleSTDs[i])>NSD*pow(SampleSTDs[i],0.5))
+                RemovedSet.insert(i);
+        }
+        if (RemovedSet.size()>SampleN*MinimumTake)
+            break;
+        SRS=0;
+        SRC=0;
+        for (int i=0;i<SampleN;++i)
+        {
+            if (RemovedSet.count(i)==0)
+            {
+                SRS+=SampleRDs[i];
+                SRC+=SampleReadCount[i];
+            }
+        }
+        LastP=EstimatedP;
+        EstimatedP=SRS/SRC;
+    }
+    SP[0]=SRS;
+    SP[1]=SRC;
+    free(SampleRDs);
+    free(SampleSTDs);
+    return;
+}
+
+double getScore(Cand *TheCand, double **RDWsAcc, int SampleN, double* SampleReadCount,int WindowN,double* CNPriors,int CNPN)
+{
+    double Score=0,P=1,CN2L=0;
+    double *SP=(double*)malloc(2*sizeof(double));
     for (int i=0;i<TheCand->Size;++i)
     {
         int mu=0;
         int mus=0;
         int SampleI=TheCand->SampleIs[i];
-        mus=RDWsAcc[SampleI][TheCand->EEs[i]]-RDWsAcc[SampleI][TheCand->EBs[i]]+0.5;
-        mu=StandardsAcc[TheCand->EEs[i]]-StandardsAcc[TheCand->EBs[i]]+0.5;
         
+        CgetSP(SP, RDWsAcc, SampleN, SampleReadCount, TheCand->EBs[i], TheCand->EEs[i]);
+        mu=SP[0]*(SampleReadCount[SampleI]/SP[1])+0.5;
+        mus=RDWsAcc[SampleI][TheCand->EEs[i]]-RDWsAcc[SampleI][TheCand->EBs[i]]+0.5;
+        //mu=StandardsAcc[TheCand->EEs[i]]-StandardsAcc[TheCand->EBs[i]]+0.5;
         TheCand->PassCs[i]=1.0-mulikely(mu,mus);
-        CN2L*=1.0-TheCand->PassCs[i];
+        //CN2L*=1.0-TheCand->PassCs[i];
+        CN2L=max(CN2L,1-TheCand->PassCs[i]);
 
         int eCN=TheCand->ECNs[i];
         double MP=0,MCN=0,Pmus=0;
         //CNPN=len(CNPriors)-1
         
         for (int j=0;j<CNPN;++j)
-            Pmus+=CNPriors[j]*poisson(mus,mu*j/2==0?1:mu*j/2);
+            Pmus+=CNPriors[j]*poisson(mus,int(mu*j/2));
+        
         if (Pmus==0)
         {
             MCN=eCN;
             MP=1;
         }
         else{
-            for (int CN=min(0,eCN-1);CN<min(CNPN+1,eCN+2);++CN){
+            for (int CN=max(0,eCN-1);CN<min(CNPN+1,eCN+2);++CN){
                 if (CN>CNPN)
                     CN=CNPN;
-                double Pmuscn=poisson(mus,mu*CN/2==0?1:mu*CN/2)*CNPriors[CN];
+                double Pmuscn=poisson(mus,int(mu*CN/2))*CNPriors[CN];
                 double Pd=Pmuscn/Pmus;
                 if (Pd>MP)
                 {
@@ -106,18 +182,21 @@ double getScore(Cand *TheCand, double **RDWsAcc, double* StandardsAcc,int Sample
         }
         TheCand->ECNs[i]=MCN;
         TheCand->Confs[i]=MP;
+        TheCand->EMUs[i]=mu;
+        TheCand->EMUSs[i]=mus;
     }
+    free(SP);
     return 1-CN2L;
 }
 
-double* getScores(Cand *Cands,int Size, double **RDWsAcc, double* StandardsAcc,int SampleN,int WindowN,double* CNPriors,int CNPN,int ThreadN)
+double* getScores(Cand *Cands,int Size, double **RDWsAcc, int SampleN,double * SampleReadCount, int WindowN,double* CNPriors,int CNPN,int ThreadN)
 {
     double * Scores=(double*)malloc(sizeof(double)*Size);
     omp_set_num_threads(ThreadN);
     #pragma omp parallel for
     for (int i=0;i<Size;++i)
     {
-        Scores[i]=getScore(Cands+i,RDWsAcc,StandardsAcc,SampleN,WindowN,CNPriors,CNPN);
+        Scores[i]=getScore(Cands+i,RDWsAcc,SampleN,SampleReadCount,WindowN,CNPriors,CNPN);
     }
     return Scores;
 }
@@ -129,8 +208,8 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     fprintf(stderr,"getting vars...");
     fflush(stderr);
     PyObject *pModule;
-    PyObject *Candidates, *TheContig, *PyThreadN;
-    PyArg_ParseTuple(args,"OOO",&Candidates,&TheContig,&PyThreadN);
+    PyObject *Candidates, *TheContig, *PyThreadN, *PySampleReadCount;
+    PyArg_ParseTuple(args,"OOOO",&Candidates,&TheContig,&PyThreadN, &PySampleReadCount);
     int ThreadN=PyLong_AsLong(PyThreadN);
 
     
@@ -139,34 +218,38 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     
     double *CNPriors=(double*)malloc(sizeof(double)*(CNPN+1));
     for (int i=0;i<=CNPN;++i) CNPriors[i]=PyFloat_AsDouble(PyList_GetItem(PyCNPriors,i));
-    
+
     PyObject* Candidate;
 
     int i=0;
     int Size=int(PyList_Size(Candidates));
 
     PyObject * RDWindowsAcc=PyObject_GetAttrString(TheContig,"RDWindowsAcc");
-    PyObject * RDStandardsAcc=PyObject_GetAttrString(TheContig,"RDWindowStandardsAcc");
+    //PyObject * RDStandardsAcc=PyObject_GetAttrString(TheContig,"RDWindowStandardsAcc");
     
-    int WindowN=int(PyLong_AsLong(PyObject_CallMethod(RDStandardsAcc,"__len__",NULL)))-1;
+    int WindowN=int(PyLong_AsLong(PyObject_CallMethod(PyList_GetItem(RDWindowsAcc,0),"__len__",NULL)))-1;
     int SampleN=int(PyList_Size(RDWindowsAcc));
 
-    double *StandardsAcc=(double*)malloc((WindowN+1)*sizeof(double));
+    double * SampleReadCount=(double *)malloc(sizeof(double)*SampleN);
+
+    //double *StandardsAcc=(double*)malloc((WindowN+1)*sizeof(double));
     double* *WindowsAcc=(double * *)malloc(sizeof(double*)*SampleN);
+    #pragma omp parallel for
     for (int j=0;j<SampleN;++j)
     {
         WindowsAcc[j]=(double*)malloc(sizeof(double)*(WindowN+1));
+        SampleReadCount[j]=(double)PyLong_AsLong(PyList_GetItem(PySampleReadCount,j));
     }
     for (i=0;i<SampleN;++i)
     for (int j=0;j<=WindowN;++j)
     {
         WindowsAcc[i][j]=PyFloat_AsDouble(PyObject_CallMethod(PyList_GetItem(RDWindowsAcc,i),"__getitem__","O",PyLong_FromLong(j)));
     }
-    
+    /*
     for (i=0;i<WindowN;++i)
     {
         StandardsAcc[i]=PyFloat_AsDouble(PyObject_CallMethod(RDStandardsAcc,"__getitem__","O",PyLong_FromLong(i)));
-    }
+    }*/
 
     Cand * Cands=(Cand*)malloc(sizeof(Cand)*Size);
 
@@ -184,11 +267,16 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
             Cands[i].EEs[j]=PyLong_AsLong(PyObject_GetAttrString(EData,"WEnd"));
             Cands[i].SampleIs[j]=PyLong_AsLong(PyObject_GetAttrString(EData,"Sample"));
             Cands[i].ECNs[j]=PyLong_AsLong(PyObject_GetAttrString(EData,"CN"));
+            if (! (PyObject_GetAttrString(EData,"mu")==Py_None))
+            {
+                Cands[i].EMUs[j]=PyLong_AsLong(PyObject_GetAttrString(EData,"mu"));
+                Cands[i].EMUSs[j]=PyLong_AsLong(PyObject_GetAttrString(EData,"mus"));
+            }
         }
     }
 
     fprintf(stderr,"calculating scores...");
-    double * Scores=getScores(Cands, Size, WindowsAcc, StandardsAcc, SampleN, WindowN, CNPriors,CNPN,ThreadN);
+    double * Scores=getScores(Cands, Size, WindowsAcc, SampleN, SampleReadCount, WindowN, CNPriors,CNPN,ThreadN);
     
     fprintf(stderr,"writing back...");
 
@@ -202,13 +290,16 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
         for (int j=0;j<Cands[i].Size;++j)
         {
             PyObject_SetAttrString(PyObject_GetAttrString(PyList_GetItem(Es,j),"Data"),"CN",PyLong_FromLong(Cands[i].ECNs[j]));
+            PyObject_SetAttrString(PyObject_GetAttrString(PyList_GetItem(Es,j),"Data"),"mu",PyLong_FromLong(Cands[i].EMUs[j]));
+            PyObject_SetAttrString(PyObject_GetAttrString(PyList_GetItem(Es,j),"Data"),"mus",PyLong_FromLong(Cands[i].EMUSs[j]));
             PyObject_SetAttrString(PyList_GetItem(Es,j),"PassConfidence",PyFloat_FromDouble(Cands[i].PassCs[j]));
             PyObject_SetAttrString(PyList_GetItem(Es,j),"Confidence",PyFloat_FromDouble(Cands[i].Confs[j]));
         }
     }
 
     fprintf(stderr,"cleaning up...");
-    free(StandardsAcc);
+    free(SampleReadCount);
+    //free(StandardsAcc);
     free(Scores);
     free(CNPriors);
     for (i=0;i<SampleN;++i) free(WindowsAcc[i]);

@@ -2,9 +2,13 @@ import globals as g
 import time
 import os
 import psutil
+import sys
 
 def gettime():
     return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
+
+def warn(Content,wfile=sys.stderr):
+    print(gettime()+Content,file=wfile)
 
 def getMemUsage():
     vms=0

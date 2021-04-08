@@ -16,7 +16,7 @@ HTSLIB=htslib/libhts.a
 all: CGetRDScores.so
 
 CGetRDScores.so: getRDScores.cpp
-	$(CC) $^ -o $@ -fPIC -fopenmp -lgsl -lgslcblas -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
+	$(CC) $^ -o $@ -O3 -fPIC -fopenmp -lgsl -lgslcblas -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
 
 $(DNASEQ):$(DNASEQ_OBJS)
 	$(AR) -rc $@ $(DNASEQ_OBJS)
@@ -60,6 +60,9 @@ test2122: cython
 test22: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
+test22light: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/HG0040*CHS*.cram.sd -C 22 > data/test22light.vcf
+	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22light.vcf
 test1: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 1 > data/test1.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 -SF /data/0/cre/CHS/samples.txt data/test1.vcf

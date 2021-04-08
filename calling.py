@@ -12,18 +12,25 @@ import torch
 def conditionP(O,Ei):
     return (Ei**O)*(math.e**(-Ei))/math.factorial(int(O))
 
-#import CGetRDScores
+import CGetRDScores
 def getRDScores(Candidates,TheContig,ThreadN=1):
+    print(gettime()+"Getting Scores...",file=sys.stderr)
     Scores=[]
     if g.EDataName!=None:
         EDF=open("%s/%s%s_%s_%s_EData.txt"%(g.EDataPath, g.EDataName,len(TheContig.SampleNames),g.RDWindowSize,TheContig.Name),"w")
     else:
         EDF=None
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
+    if g.StatLocal:
+        SampleReadCount=TheContig.SampleReadCount
+    else:
+        SampleReadCount=g.SampleReadCount
+    Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,ThreadN,SampleReadCount)
+    print(gettime()+"Filting NN...",file=sys.stderr)
     model=torch.load("data/ScoringTrainModelData")
     for i in range(len(Candidates)):
-        Scores.append(getScore(Candidates[i],TheContig,(EDF,i),model))
-    #Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,g.ThreadN)
+        #Scores.append(getScore(Candidates[i],TheContig))
+        passNN(Candidates[i],TheContig,Scores[i],(EDF,i),model)
     if EDF!=None:
         EDF.close()
     return Scores
@@ -55,10 +62,11 @@ def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     if (SegFileNNumber[0]!=None):
         print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio),file=SegFileNNumber[0])
     DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
+    #print(DataItem,file=sys.stderr)
     #return torch.Tensor([SegFileNNumber[1],TheContig.NLength,SiblingCount,E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,ChrNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0])
     return torch.Tensor(DataItem)
 
-def getRDScore(C, TheContig,SegmentFileNNumber=None,Model=None):
+def getRDScore(C, TheContig):
     Score=0
     P=1
     CN2L=0
@@ -86,7 +94,7 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None,Model=None):
             MCN=eCN
             MP=1
         else:
-            for CN in range(min(0,eCN-1),eCN+2):
+            for CN in range(max(0,eCN-1),eCN+2):
                 if CN>CNPN:
                     CN=CNPN
                 Pmuscn=poisson.pmf(mus,int(mu*CN/2))*CNPriors[CN]
@@ -114,8 +122,11 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None,Model=None):
         if qint[0]<v<qint[1]:
             Score+=1
         '''
+    return 1-CN2L
+
+def passNN(C,TheContig,Score,SegmentFileNNumber,Model):
     for e in C.Evidences:
-        Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,1-CN2L)
+        Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,Score)
         YP=Model(Traits)
         #print(Traits,YP,file=sys.stderr)
         #exit(0)
@@ -123,10 +134,9 @@ def getRDScore(C, TheContig,SegmentFileNNumber=None,Model=None):
             e.NN=1
         else:
             e.NN=0
-    return 1-CN2L
 
-def getScore(C,TheContig,SFN,Model):
-    return getRDScore(C,TheContig,SFN,Model)
+def getScore(C,TheContig):
+    return getRDScore(C,TheContig)
     Score=0
     RDScore=0
     U=0

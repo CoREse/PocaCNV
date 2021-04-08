@@ -49,7 +49,7 @@ def cn2likely(Interval,TheContig,SP=None):
         mu,mus=(Interval.mu,Interval.mus)
     cd=poisson.cdf(mus,mu)
     return min(cd,1-cd)
-def mulikely(mu,mus):
+def mulikely(mu,mus):#在mu的情况下，出现小于mus或者大于mus的概率
     cd=poisson.cdf(mus,mu)
     return min(cd,1-cd)
 
@@ -159,7 +159,7 @@ class RDInterval:
         if TheContig==None:
             raise Exception("No contig given.")
         if SP==None:
-            SP=getSP(TheContig,self.WBegin,self.WEnd,local)
+            SP=getSP(TheContig,self.WBegin,self.WEnd,local=local)
         Stat=g
         if local:
             Stat=TheContig
@@ -345,6 +345,7 @@ def dnacopy_cbs_multi(data):
     return CutOffs
 
 def extractEvidences(Intervals):
+    warn("Making evidences...")
     Evidences=[]
     for S in Intervals:
         for I in S:
@@ -355,6 +356,7 @@ def extractEvidences(Intervals):
     return Evidences
 
 def makeRDICandidates(Evidences):
+    warn("Making candidates...")
     Candidates=[]
     for e in Evidences:
         Candidates.append(Candidate([e]))
@@ -438,13 +440,13 @@ def getIntervalNormalRD_contig(TheContig,SampleI,WindowB,WindowE):
 
 def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     print(gettime()+"processing %s RD data..."%TheContig.Name,file=sys.stderr)
-    PPRDWindowAverages=[0]*WindowsN
+    #PPRDWindowAverages=[0]*WindowsN
     PP=0.9
     #RDWindowMedians=[0]*WindowsN
     RDWindowSums=array("d",[0]*WindowsN)
     g.RDWindowSums=RDWindowSums
     SampleN=len(RDWindows)
-    RDWindowStandards=PPRDWindowAverages
+    #RDWindowStandards=PPRDWindowAverages
     #WindowsP=[0]*WindowsN#use maximal-likelyhood estimate to estimate poisson(np)'s p, with sequencing reads number as n. As a result, the p=(sum of rd of all samples)/(sum of n)
     #furthermore, the standard rd of sample i should be p*ni=(sum of rd)*((ni)/(sum of n))
     AllReadCount=0#sum of n
@@ -469,15 +471,15 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     for i in range(SampleN):
         RDWindowsAcc.append(array("f",[0]*(WindowsN+1)))
     RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
+    TheContig.MixedRDRs=MixedRDRs
+    #TheContig.RDWindowStandards=RDWindowStandards
+    TheContig.RDWindowsAcc=RDWindowsAcc
 
-    processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowStandards, RDWindowsAcc, RDWindowStandardsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, TheContig.Ploidies)
+    processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, TheContig.Ploidies)
     
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
-    TheContig.MixedRDRs=MixedRDRs
-    TheContig.RDWindowStandards=RDWindowStandards
-    TheContig.RDWindowsAcc=RDWindowsAcc
-    TheContig.RDWindowStandardsAcc=RDWindowStandardsAcc
+    #TheContig.RDWindowStandardsAcc=RDWindowStandardsAcc
     #TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs

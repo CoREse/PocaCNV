@@ -8,6 +8,7 @@ from libc.math cimport pow,fabs
 from cpython cimport array
 from array import array
 import sys
+from utils import *
 
 import globals as g
 
@@ -17,15 +18,16 @@ def getSampleSum(TheContig, SampleI, WBegin, WEnd):
         SampleRD+=TheContig.RDWindows[SampleI][j]
     return SampleRD
 
-cdef double CgetSampleSum(float ** CRDWindows, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
-    cdef double SampleRD=0
-    cdef unsigned long j=0
-    for j from WBegin<=j<WEnd:
-        SampleRD+=CRDWindows[SampleI][j]
-    return SampleRD
+cdef double CgetSampleSum(float ** CRDWindowsAcc, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
+    #cdef double SampleRD=0
+    #cdef unsigned long j=0
+    #SampleRD=CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin]
+    #for j from WBegin<=j<WEnd:
+    #    SampleRD+=CRDWindows[SampleI][j]
+    return CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin]
 
 from libcpp.unordered_set cimport unordered_set
-cdef void CgetSP(double *SP, float ** CRDwindows, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
+cdef void CgetSP(double *SP, float ** CRDwindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
     cdef double SRS=0,SRC=0
     if WEnd<=WBegin:
         SP[0]=0
@@ -33,7 +35,7 @@ cdef void CgetSP(double *SP, float ** CRDwindows, unsigned long SampleN, double 
     cdef double *SampleRDs=<double*>malloc(SampleN*sizeof(double))
     cdef unsigned long i,j
     for i from 0<=i<SampleN:
-        SampleRDs[i]=CgetSampleSum(CRDwindows, i, WBegin, WEnd)
+        SampleRDs[i]=CgetSampleSum(CRDwindowsAcc, i, WBegin, WEnd)
         SRS+=SampleRDs[i]
         SRC+=SampleReadCount[i]
     cdef double EstimatedP=SRS/SRC
@@ -125,7 +127,7 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=g.StatLocal):#g
 cdef double CgetNormalRDDirect(double * StatisticalReadCounts, double * StatisticalRDWindowSums, double * SampleReadCount, unsigned long SampleI, unsigned long WindowI) nogil:
     return 0 if StatisticalReadCounts[WindowI]==0 else StatisticalRDWindowSums[WindowI]*(SampleReadCount[SampleI]/StatisticalReadCounts[WindowI])
 
-def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowStandards, RDWindowsAcc, RDWindowStandardsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, Ploidies):
+def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, Ploidies):
     Mean2Adjust=False
     Smooth=1
     RDWindowAverages=array("d",[0]*WindowsN)
@@ -161,6 +163,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     cdef unsigned long Cj=0,Ci=0
     cdef float ** CRDWindows=<float **>malloc(SampleN*sizeof(float*))
     cdef float ** CMixedRDRs=<float **>malloc(SampleN*sizeof(float*))
+    cdef float ** CRDWindowsAcc=<float **>malloc(SampleN*sizeof(float*))
     #cdef size_t CTempAddress=ctypes.addressof(RDWindowAverages)
     cdef size_t TempAddr
     cdef int CThreadN=g.ThreadN
@@ -180,8 +183,18 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
         #CTempAddress=ctypes.addressof(MixedRDRs[i])
         TempArray=MixedRDRs[i]
         CMixedRDRs[i]=<float*>(TempArray.data.as_voidptr)
+        TempArray=RDWindowsAcc[i]
+        CRDWindowsAcc[i]=<float*>(TempArray.data.as_voidptr)
     TempArray=None
 
+    cdef float Sum
+    for Ci in prange(CSampleN,nogil=True,num_threads=CThreadN):
+        Sum=0
+        for Cj from 0<=Cj<CWindowsN:
+            CRDWindowsAcc[Ci][Cj]=Sum
+            Sum=CRDWindows[Ci][Cj]+Sum
+        CRDWindowsAcc[Ci][CWindowsN]=Sum
+    
     cdef double * SP
     '''
     spf=open("data/cSPs.txt","w")
@@ -200,7 +213,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
             #for Cj from 0<=Cj<100000000:
             #    CRDWindows[0][0]+=0.1*pow(Cj/100000000,0.5)
             CRDWindowAverages[Ci]=CRDWindowSums[Ci]/<double>CSampleN
-            CgetSP(SP, CRDWindows, CSampleN, CSampleReadCount, Ci, Ci+1)
+            CgetSP(SP, CRDWindowsAcc, CSampleN, CSampleReadCount, Ci, Ci+1)
             #oSP=getSP(TheContig,Ci,Ci+1)
             #print("(%s, %d)"%(SP[0],int(SP[1])),file=spf)
             CStatisticalRDWindowSums[Ci]=SP[0]
@@ -310,19 +323,6 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
             for j in range(WindowsN):
                 MixedRDRs[i][j]*=ARatio
 
-    Sum=0
-    for i in range(WindowsN):
-        RDWindowStandardsAcc[i]=Sum
-        Sum+=RDWindowStandards[i]
-    RDWindowStandardsAcc[WindowsN]=Sum
-
-    for i in range(SampleN):
-        Sum=0
-        for j in range(WindowsN):
-            RDWindowsAcc[i][j]=Sum
-            Sum+=RDWindows[i][j]
-        RDWindowsAcc[i][WindowsN]=Sum
-    
     free(SampleSums)
     free(SampleAverages)
     free(CPloidies)
