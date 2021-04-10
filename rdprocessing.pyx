@@ -18,111 +18,36 @@ def getSampleSum(TheContig, SampleI, WBegin, WEnd):
         SampleRD+=TheContig.RDWindows[SampleI][j]
     return SampleRD
 
-cdef double CgetSampleSum(float ** CRDWindowsAcc, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd) nogil:
-    #cdef double SampleRD=0
-    #cdef unsigned long j=0
-    #SampleRD=CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin]
-    #for j from WBegin<=j<WEnd:
-    #    SampleRD+=CRDWindows[SampleI][j]
-    return CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin]
-
-from libcpp.unordered_set cimport unordered_set
-cdef void CgetSP(double *SP, float ** CRDwindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
-    cdef double SRS=0,SRC=0
-    if WEnd<=WBegin:
-        SP[0]=0
-        SP[1]=0
-    cdef double *SampleRDs=<double*>malloc(SampleN*sizeof(double))
-    cdef unsigned long i,j
-    for i from 0<=i<SampleN:
-        SampleRDs[i]=CgetSampleSum(CRDwindowsAcc, i, WBegin, WEnd)
-        SRS+=SampleRDs[i]
-        SRC+=SampleReadCount[i]
-    cdef double EstimatedP=SRS/SRC
-    cdef unordered_set[unsigned long] RemovedSet
-    cdef double LastP=0
-    cdef double *SampleSTDs=<double*>malloc(SampleN*sizeof(double))
-    while LastP!=EstimatedP:
-        RemovedSet.clear()
-        for i from 0<=i<SampleN:
-            SampleSTDs[i]=EstimatedP*SampleReadCount[i]
-            if fabs(SampleRDs[i]-SampleSTDs[i])>NSD*pow(SampleSTDs[i],0.5):
-                RemovedSet.insert(i)
-        if RemovedSet.size()>SampleN*MinimumTake:
-            break
-        SRS=0
-        SRC=0
-        for i from 0<=i<SampleN:
-            if RemovedSet.count(i)==0:
-                SRS+=SampleRDs[i]
-                SRC+=SampleReadCount[i]
-        LastP=EstimatedP
-        EstimatedP=SRS/SRC
-    SP[0]=SRS
-    SP[1]=SRC
-    free(SampleRDs)
-    free(SampleSTDs)
+#from libcpp.unordered_set cimport unordered_set
+cdef extern from "cpputils.h":
+    cdef void CgetSP(double *SP, float ** CRDWindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD, double MinimumTake) nogil
+cdef void CygetSP(double *SP, float ** CRDWindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8) nogil:
+    CgetSP(SP,CRDWindowsAcc,SampleN,SampleReadCount,WBegin,WEnd,NSD,MinimumTake)
     return
-
 #should be irrelevant to ploidy if we use local, since all windows in the same sample have the same ploidies.
 def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=g.StatLocal):#get rd sum and sample read count sum
-    SRS=0
-    SRC=0
-    if WEnd<=WBegin:
-        return (0,0)
-    SampleN=len(TheContig.SampleNames)
-    SampleRDs=[0]*SampleN
+    cdef double *SP=<double *>malloc(sizeof(double)*2)
+    cdef unsigned long SampleN=len(TheContig.SampleNames)
+    cdef float ** CRDWindowsAcc=<float **>malloc(sizeof(float*)*SampleN)
+    cdef double * SampleReadCount=<double*>malloc(sizeof(double)*SampleN)
+    cdef unsigned long CWBegin=WBegin
+    cdef unsigned long CWEnd=WEnd
+    cdef double CNSD=NSD
+    cdef double CMinimumTake=MinimumTake
     Stat=g
     if local:
         Stat=TheContig
-    #start with middle p
-    #this seems better
-    '''SamplePs=[0]*SampleN
     for i in range(SampleN):
-        SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
-        SamplePs[i]=SampleRDs[i]/Stat.SampleReadCount[i]
-    SamplePs.sort()
-    EstimatedP=SamplePs[int(SampleN/2)]
-    SRS=EstimatedP
-    SRC=1
-    if SampleN%2==0:
-        EstimatedP+=SamplePs[int(SampleN/2)-1]
-        EstimatedP/=2'''
-    #start with whole
+        SampleReadCount[i]=Stat.SampleReadCount
+    cdef array.array TempArray
     for i in range(SampleN):
-        SampleRDs[i]=getSampleSum(TheContig,i,WBegin,WEnd)
-        SRS+=SampleRDs[i]
-        SRC+=Stat.SampleReadCount[i]
-    EstimatedP=SRS/SRC
-    RemovedSet=set()
-    LastP=0
-    SampleSTDs=[0]*SampleN
-    while LastP!=EstimatedP:
-        RemovedSet=set()
-        for i in range(SampleN):
-            SampleSTDs[i]=EstimatedP*Stat.SampleReadCount[i]
-            if abs(SampleRDs[i]-SampleSTDs[i])>NSD*SampleSTDs[i]**0.5:
-                RemovedSet.add(i)
-        if len(RemovedSet)>SampleN*MinimumTake:
-            break
-        SRS=0
-        SRC=0
-        for i in range(SampleN):
-            if i not in RemovedSet:
-                SRS+=SampleRDs[i]
-                SRC+=Stat.SampleReadCount[i]
-        LastP=EstimatedP
-        EstimatedP=SRS/SRC
-    #the efficient way
-    '''for i in range(WBegin,WEnd):
-        SRS+=g.StatisticalRDWindowSums[i]
-        SRC+=g.StatisticalReadCounts[i]
-    SRC/=WEnd-WBegin'''
-    #the efficient way 2
-    '''for i in range(WBegin,WEnd):
-        SRS+=g.RDWindowSums[i]
-    SRC=g.AllReadCount'''
-    return (SRS,SRC)
+        TempArray=TheContig.RDWindowsAcc[i]
+        CRDWindowsAcc[i]=<float*>(TempArray.data.as_voidptr)
+    return (SP[0],SP[1])
+    CgetSP(SP,CRDWindowsAcc,SampleN,SampleReadCount,CWBegin,CWEnd,CNSD,CMinimumTake)
+    free(SP)
+    free(CRDWindowsAcc)
+    free(SampleReadCount)
 
 cdef double CgetNormalRDDirect(double * StatisticalReadCounts, double * StatisticalRDWindowSums, double * SampleReadCount, unsigned long SampleI, unsigned long WindowI) nogil:
     return 0 if StatisticalReadCounts[WindowI]==0 else StatisticalRDWindowSums[WindowI]*(SampleReadCount[SampleI]/StatisticalReadCounts[WindowI])
@@ -213,7 +138,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
             #for Cj from 0<=Cj<100000000:
             #    CRDWindows[0][0]+=0.1*pow(Cj/100000000,0.5)
             CRDWindowAverages[Ci]=CRDWindowSums[Ci]/<double>CSampleN
-            CgetSP(SP, CRDWindowsAcc, CSampleN, CSampleReadCount, Ci, Ci+1)
+            CygetSP(SP, CRDWindowsAcc, CSampleN, CSampleReadCount, Ci, Ci+1)
             #oSP=getSP(TheContig,Ci,Ci+1)
             #print("(%s, %d)"%(SP[0],int(SP[1])),file=spf)
             CStatisticalRDWindowSums[Ci]=SP[0]

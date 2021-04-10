@@ -81,12 +81,12 @@ inline double pcdf(int mus, int mu)
     //return Result;
 }
 
-inline double CgetSampleSum(double ** CRDWindowsAcc, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd)
+inline double CgetSampleSum(float ** CRDWindowsAcc, unsigned long SampleI, unsigned long WBegin, unsigned long WEnd)
 {
     return CRDWindowsAcc[SampleI][WEnd]-CRDWindowsAcc[SampleI][WBegin];
 }
 
-inline void CgetSP(double *SP, double ** CRDwindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8)
+void CgetSP(double *SP, float ** CRDWindowsAcc, unsigned long SampleN, double * SampleReadCount, unsigned long WBegin, unsigned long WEnd, double NSD=3, double MinimumTake=0.8)
 {
     double SRS=0,SRC=0;
     if (WEnd<=WBegin)
@@ -98,7 +98,7 @@ inline void CgetSP(double *SP, double ** CRDwindowsAcc, unsigned long SampleN, d
     unsigned long i,j;
     for (int i=0;i<SampleN;++i)
     {
-        SampleRDs[i]=CgetSampleSum(CRDwindowsAcc, i, WBegin, WEnd);
+        SampleRDs[i]=CgetSampleSum(CRDWindowsAcc, i, WBegin, WEnd);
         SRS+=SampleRDs[i];
         SRC+=SampleReadCount[i];
     }
@@ -137,7 +137,7 @@ inline void CgetSP(double *SP, double ** CRDwindowsAcc, unsigned long SampleN, d
     return;
 }
 
-double getScore(Cand *TheCand, double **RDWsAcc, int SampleN, double* SampleReadCount,int WindowN,double* CNPriors,int CNPN)
+double getScore(Cand *TheCand, float **RDWsAcc, int SampleN, double* SampleReadCount,int WindowN,double* CNPriors,int CNPN)
 {
     double Score=0,P=1,CN2L=0;
     double *SP=(double*)malloc(2*sizeof(double));
@@ -189,7 +189,7 @@ double getScore(Cand *TheCand, double **RDWsAcc, int SampleN, double* SampleRead
     return 1-CN2L;
 }
 
-double* getScores(Cand *Cands,int Size, double **RDWsAcc, int SampleN,double * SampleReadCount, int WindowN,double* CNPriors,int CNPN,int ThreadN)
+double* getScores(Cand *Cands,int Size, float **RDWsAcc, int SampleN,double * SampleReadCount, int WindowN,double* CNPriors,int CNPN,int ThreadN)
 {
     double * Scores=(double*)malloc(sizeof(double)*Size);
     omp_set_num_threads(ThreadN);
@@ -233,11 +233,11 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     double * SampleReadCount=(double *)malloc(sizeof(double)*SampleN);
 
     //double *StandardsAcc=(double*)malloc((WindowN+1)*sizeof(double));
-    double* *WindowsAcc=(double * *)malloc(sizeof(double*)*SampleN);
+    float* *WindowsAcc=(float * *)malloc(sizeof(float*)*SampleN);
     #pragma omp parallel for
     for (int j=0;j<SampleN;++j)
     {
-        WindowsAcc[j]=(double*)malloc(sizeof(double)*(WindowN+1));
+        WindowsAcc[j]=(float*)malloc(sizeof(float)*(WindowN+1));
         SampleReadCount[j]=(double)PyLong_AsLong(PyList_GetItem(PySampleReadCount,j));
     }
     for (i=0;i<SampleN;++i)

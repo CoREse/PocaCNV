@@ -52,7 +52,7 @@ def cn2likely(Interval,TheContig,SP=None):
 def mulikely(mu,mus):#在mu的情况下，出现小于mus或者大于mus的概率
     cd=poisson.cdf(mus,mu)
     return min(cd,1-cd)
-
+"""
 def getSampleSum(TheContig, SampleI, WBegin, WEnd):
     SampleRD=0
     for j in range(WBegin,WEnd):
@@ -117,7 +117,7 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=g.StatLocal):#g
     '''for i in range(WBegin,WEnd):
         SRS+=g.RDWindowSums[i]
     SRC=g.AllReadCount'''
-    return (SRS,SRC)
+    return (SRS,SRC)"""
 
 class RDInterval:
     def __init__(self,Sample,WBegin,WEnd,ARD,Ploidy,TheContig=None,RDWindowSize=None):#multiprocessing will make g.RDWindowSize to default value

@@ -13,7 +13,7 @@ HTSLIB=htslib/libhts.a
 
 .PHONY: all test clean
 
-all: CGetRDScores.so
+all: build
 
 CGetRDScores.so: getRDScores.cpp
 	$(CC) $^ -o $@ -O3 -fPIC -fopenmp -lgsl -lgslcblas -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
@@ -29,6 +29,7 @@ otest: $(PROJECT_OBJS) $(HTSLIB)
 
 cython: rdprocessing.pyx
 	python3 cythonsetup.py build_ext --inplace
+build: cython CGetRDScores.so
 
 test:
 	python3 test.py
@@ -54,15 +55,18 @@ wotest:
 qtest108:
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 2000 ~/data/0/CHS/2krd/*.rdf -C 22 > data/qtest108.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/qtest108.vcf
-test2122: cython
+test2122: build
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 -C 21 > data/test2122.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test2122.vcf
-test22: cython
+test22: build
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
-	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22.vcf
-test22light: cython
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /data/0/cre/CHS/samples.txt data/test22.vcf
+test22light: build
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/HG0040*CHS*.cram.sd -C 22 > data/test22light.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22light.vcf
+test22tg: build
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*.cram.sd -C 22 > data/test22tg.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /data/0/cre/CHS/samples.txt data/test22tg.vcf
 test1: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 1 > data/test1.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 1 -SF /data/0/cre/CHS/samples.txt data/test1.vcf
@@ -80,6 +84,8 @@ cdxedata: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/cdxedata.vcf 2> data/cdxedata.log
 clmwhole: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CLM/*CLM*.cram -EN CLM > data/clmwhole.vcf 2> data/clmwhole.log
+cdxwhole: cython
+	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CDX/*CDX*.cram -EN CDX > data/cdxwhole.vcf 2> data/cdxwhole.log
 debug:
 	bash debugs/debug.sh
 bench:
