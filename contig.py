@@ -48,6 +48,7 @@ class Contig:
     def clearMemory(self):
         self.RDWindows=None
         self.MixedRDRs=None
+        self.DRPs=None
     
     def getNew(self,TheGenome):
         return Contig(self.Name,self.NLength,self.RDWindowSize,TheGenome)
