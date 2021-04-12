@@ -20,6 +20,7 @@ def processEvidenceWithDRPs(e, TheContig):
             e.SupportedDRPs.append(d)
 
 def processEvidencesWithDRPs(Es, TheContig):
-    for e in Es:
-        processEvidenceWithDRPs(e,TheContig)
+    for s in Es:
+        for e in s:
+            processEvidenceWithDRPs(e,TheContig)
     return Es

@@ -223,7 +223,7 @@ def scanConZero(SampleMRDRs):
                 Begin=None
     return Ints
 
-def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=None):
+def makeSampleRDEvidences(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=None):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     #SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
     sys.stderr.flush()
@@ -241,31 +241,45 @@ def makeSampleRDIntervals(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=Non
         SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,Ploidy,None,RDWindowSize))
         Last=End
     SampleIntervals.sort(key=lambda I:I.WBegin)
+    SampleEvidences=[]
+    for I in SampleIntervals:
+        if I.CN!=I.Ploidy:
+            e=Evidence()
+            e.setData(1,I)
+            SampleEvidences.append(e)
     del SampleMRDRs
-    return SampleIntervals
+    del SampleIntervals
+    return SampleEvidences
 
-def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
+def makeRDEvidences(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
     if g.RParallel:
         CutOffs=dnacopy_cbs_multi(MixedRDRs)
-        Intervals=[]
+        #Intervals=[]
+        Evidences=[]
         for i in range(len(MixedRDRs)):
             Ploidy=TheContig.Ploidies[i]
-            Intervals.append([])
+            Intervals=[]
+            Evidences.append([])
             Last=0
             for End,Ave in CutOffs[i]:
                 Ave=0
                 for j in range(Last,End):
                     Ave+=MixedRDRs[i][j]
                 Ave/=End-Last
-                Intervals[i].append(RDInterval(i,Last,End,Ave,Ploidy,None,g.RDWindowSize))
+                Intervals.append(RDInterval(i,Last,End,Ave,Ploidy,None,g.RDWindowSize))
                 Last=End
-            Intervals[i].sort(key=lambda I:I.WBegin)
-        TheContig.Intervals=Intervals
-        return Intervals
+            Intervals.sort(key=lambda I:I.WBegin)
+            for I in Intervals:
+                if I.CN!=I.Ploidy:
+                    e=Evidence()
+                    e.setData(1,I)
+                    Evidences[i].append(e)
+        #TheContig.Intervals=Intervals
+        return Evidences
     if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
-        Intervals=[None]*len(MixedRDRs)
+        Evidences=[None]*len(MixedRDRs)
         for i in range(len(MixedRDRs)):
-            Intervals[i]=makeSampleRDIntervals(MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
+            Evidences[i]=makeSampleRDEvidences(MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
     else:
         ctx=mp.get_context("fork")
         pool=ctx.Pool(g.ThreadN)
@@ -273,12 +287,12 @@ def makeRDIntervals(MixedRDRs,TheContig):#because robjects.r is singleton, use m
         for i in range(len(MixedRDRs)):
             args.append((MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
         addPool(pool)
-        Intervals=pool.starmap(makeSampleRDIntervals,args)
+        Evidences=pool.starmap(makeSampleRDEvidences,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
         delPool()
         pool.terminate()
-    TheContig.Intervals=Intervals
-    return Intervals
+    #TheContig.Intervals=Intervals
+    return Evidences
 
 def segmentation(data):
     #return SaRa(data)
@@ -358,8 +372,9 @@ def extractEvidences(Intervals):
 def makeRDICandidates(Evidences):
     warn("Making candidates...")
     Candidates=[]
-    for e in Evidences:
-        Candidates.append(Candidate([e]))
+    for s in Evidences:
+        for e in s:
+            Candidates.append(Candidate([e]))
     Candidates=combineCandidateSets(Candidates,[])
     for c in Candidates:
         c.unifyEvidences()
@@ -484,7 +499,7 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     if NormalizationOnly:
         return MixedRDRs
 
-    RDICandidates=makeRDICandidates(processEvidencesWithDRPs(extractEvidences(makeRDIntervals(MixedRDRs,TheContig)),TheContig))
+    RDICandidates=makeRDICandidates(processEvidencesWithDRPs(makeRDEvidences(MixedRDRs,TheContig),TheContig))
     SegSD=False
     if SegSD:
         SDCandidates=getSDCandidates(TheContig)
