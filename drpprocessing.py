@@ -1,5 +1,6 @@
 import globals as g
 from utils import *
+import multiprocessing as mp
 
 #def indexDPRs(TheContig):
 #    TheContig.SortedDRPsBySampleI={}
@@ -10,29 +11,47 @@ from utils import *
 #    for i in range(len(TheContig.RDWindows)):
 #        TheContig.SortedDRPsBySampleI[i].sort(key=lambda d: d.Start)
 
-def processEvidenceWithDRPs(e, DRPs, MaxEnds):
-    Start=findIndex(MaxEnds[e.Sample],e.Begin)
-    End=findStartIndex(DRPs[e.Sample],e.End)
-    for d in DRPs[e.Sample][Start:End]:
-        if (d.SupportedVariantType ==0 and e.SupportedSVType> 0) or (d.SupportedVariantType==1 and e.SupportedSVType==0):
-            continue 
-        if inclusion((e.Begin,e.End),(d.Start,d.End))>2:#d include e or identical
-            e.SupportedDRPs.append(d)
+def processSampleEvidencesWithDRPs(SEs, DRPs, MaxEnds):
+    for e in SEs:
+        Start=findIndex(MaxEnds,e.Begin)
+        End=findStartIndex(DRPs,e.End)
+        for d in DRPs[Start:End]:
+            if (d.SupportedVariantType ==0 and e.SupportedSVType> 0) or (d.SupportedVariantType==1 and e.SupportedSVType==0):
+                continue 
+            if inclusion((e.Begin,e.End),(d.Start,d.End))>2:#d include e or identical
+                e.SupportedDRPs.append(d)
+    return SEs
+
+def getMaxEnds(DRPs):
+    MaxEnd=0
+    MaxEnds=[]
+    for d in DRPs:
+        if d.End>MaxEnd:
+            MaxEnd=d.End
+        MaxEnds.append(MaxEnd)
+    MaxEnds.sort()
+    return MaxEnds
 
 def processEvidencesWithDRPs(Es, TheContig):
     warn("processing DRPs...")
     MaxEnds=[]
-    for Ds in TheContig.DRPs:
-        MaxEnd=0
-        MaxEnds.append([])
-        for d in Ds:
-            if d.End>MaxEnd:
-                MaxEnd=d.End
-            MaxEnds[-1].append(MaxEnd)
-        MaxEnds[-1].sort()
-    for s in Es:
-        for e in s:
-            processEvidenceWithDRPs(e,TheContig.DRPs,MaxEnds)
+    SampleN=len(Es)
+    ctx=mp.get_context("fork")
+    pool=ctx.Pool(g.ThreadN)
+    args=[]
+    for i in range(SampleN):
+        args.append((TheContig.DRPs[i]))
+    addPool(pool)
+    MaxEnds=pool.map(getMaxEnds,args)
+    print(gettime()+"Max Ends made. "+getMemUsage(),file=sys.stderr)
+    args=[]
+    for i in range(SampleN):
+        args.append((Es[i],TheContig.DRPs[i],MaxEnds[i]))
+    addPool(pool)
+    Es=pool.starmap(processSampleEvidencesWithDRPs,args)
+    print(gettime()+"Evidences processed. "+getMemUsage(),file=sys.stderr)
+    delPool()
+    pool.terminate()
     return Es
 
 def findStartIndex(DRPs,Value,s=0,e=-1):#return index with value, not necessarily the first

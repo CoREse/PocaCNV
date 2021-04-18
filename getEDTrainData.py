@@ -33,24 +33,25 @@ for line in EDDataFile:
         SegNum=sl[0]
         ChromoLength=sl[1]
         SiblingCount=sl[2]
-        SampleName=sl[3]
-        Begin=sl[4]
-        End=sl[5]
-        Mu=sl[6]
-        MuS=sl[7]
-        PassConfidence=sl[8]
-        CN=sl[9]
-        Confidence=sl[10]
-        CScore=sl[11]
-        HasSDRP=sl[12]
-        HasMultiSDRP=sl[13]
-        SDRPRatio=sl[14]
+        SiblingRatio=sl[3]
+        SampleName=sl[4]
+        Begin=sl[5]
+        End=sl[6]
+        Mu=sl[7]
+        MuS=sl[8]
+        PassConfidence=sl[9]
+        CN=sl[10]
+        Confidence=sl[11]
+        CScore=sl[12]
+        HasSDRP=sl[13]
+        HasMultiSDRP=sl[14]
+        SDRPRatio=sl[15]
         if not First:
             print("")
         First=False
         if isFine(SampleName,Begin,End):
-            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,1),end="")
+            print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,SiblingRatio,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,1),end="")
         else:
-            print("%s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,0),end="")
+            print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegNum,ChromoLength,SiblingCount,SiblingRatio,Begin,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,0),end="")
 
 EDDataFile.close()

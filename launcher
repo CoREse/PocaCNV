@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+#vim: set fs=py
+
+import sys
+import subprocess
+import pysam
+
+def usage():
+    print("""launcher [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
+Arguments:
+    -T,--Reference FILENAME   give referencefile(fasta)(str)
+    -WO                       Write RD data only(no calling)
+    -C             ContigName Contain (only) contig, can be used multiple times(str)
+    -J,-j          ThreadNum  Default:8. Thread number(int)
+    -JR            ThreadNum  Thread number for reading sam files, default same as threadnum
+    -WS            Size       Default:100. WindowSize(int)
+    -WM                       Write Mixed RD data and other data
+    -LC            FILENAME   Load candidates(include all data) from dumped file(str)
+    -DC            FILENAME   Dump candidates to json FILENAME(str)
+    -EN            EDataName  EDataName if you want to write EData(for training)
+    -EP            EDataPath  Default:data. Path that stores EData
+    """,file=sys.stderr)
+    exit(0)
+def getParas(argv):
+    i=1
+    while i< len(argv):
+        try:
+            a=argv[i]
+            if a=='-T' or a=="--Reference":
+                ReferencePath.append(argv[i+1])
+                i+=1
+            elif a=='-WO':
+                WriteRDData=True
+                WriteRDDataOnly=True
+            elif a=="-WM":
+                WriteMixedRDData=True
+            elif a=='-C':
+                ContigsToGo.add(argv[i+1])
+                i+=1
+            elif a=='-J' or a=='-j':
+                ThreadN=int(argv[i+1])
+                i+=1
+            elif a=='-JR':
+                ThreadNR=int(argv[i+1])
+                i+=1
+            elif a=='-WS':
+                RDWindowSize=int(argv[i+1])
+                i+=1
+            elif a=="-DC":
+                DumpCandidates=argv[i+1]
+                i+=1
+            elif a=="-LC":
+                LoadCandidates=argv[i+1]
+                i+=1
+            elif a=="-EN":
+                EDataName=argv[i+1]
+                i+=1
+            elif a=="-EP":
+                EDataPath=argv[i+1]
+                i+=1
+            else:
+                SamplePaths.append(argv[i])
+        except Exception as e:
+            print(e,file=sys.stderr)
+            usage()
+        i+=1
+    if ReferencePath==None or len(SamplePaths)==0:
+        usage()
+        exit(0)
+
+ReferencePath=[]
+SamplePaths=[]
+ContigsToGo=set()
+Contigs=[]
+
+from globals import Parameters
+
+getParas(sys.argv)
+ReferencePath=ReferencePath[0]
+
+ReferenceFile=pysam.FastaFile(ReferencePath)
+for tid in range(ReferenceFile.nreferences):
+    if len(ContigsToGo)!=0:
+        if ReferenceFile.references[tid] not in ContigsToGo:
+            continue
+    Contigs.append((ReferenceFile.references[tid],ReferenceFile.lengths[tid]))
+ReferenceFile.close()
+
+
+PythonName="python3"
+ProgramName="jcrd.py"
+
+
+args=[]
+i=1
+while i < len(sys.argv):
+    if sys.argv[i]=="-C":
+        i+=1
+    else:
+        args.append(sys.argv[i])
+    i+=1
+
+import pickle
+import codecs
+FirstContig=True
+for c in Contigs:
+    cargs=args.copy()
+    cargs.append("-C")
+    cargs.append(c[0])
+    if FirstContig:
+        cargs.append("-PH")
+        cargs.append(codecs.encode(pickle.dumps(Contigs), "base64").decode())
+        FirstContig=False
+    run=subprocess.Popen([PythonName,"-u",ProgramName]+cargs)
+    run.wait()
+    run.terminate()
+    run.kill()

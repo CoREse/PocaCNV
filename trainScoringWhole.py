@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 import sys
 
-SavePath="data/ScoringTrainModelData"
+SavePath="data/ScoringTrainWholeModelData"
 
 #device=torch.device("cuda:1")
 device=torch.device("cpu")
@@ -22,12 +22,12 @@ HiddenLayersN=20
 # 规定学习率
 learning_rate = 1e-3
 
-BATCH_SIZE=0
+BATCH_SIZE=1000
 MaxBlock=20000
 
-Even=True
+Even=False
 
-ValidateTurn=200
+ValidateTurn=50
 SaveAlong=True
 
 ValidatePortion=0.05
@@ -112,27 +112,74 @@ for i in range(len(ValidateData)):
     NPValidate[i]=ValidateData[i]
 TensorValidate=torch.from_numpy(NPValidate).to(device=device)
 
-Data=Data0[ValidateClass0Size:ValidateClass0Size+TrainClass0Size]+Data1[ValidateClass1Size:ValidateClass1Size+TrainClass1Size]
-np.random.shuffle(Data)
+Data0=Data0[ValidateClass0Size:ValidateClass0Size+TrainClass0Size]
+Data1=Data1[ValidateClass1Size:ValidateClass1Size+TrainClass1Size]
+Data=Data0+Data1
+#np.random.shuffle(Data)
 
+NPData0=np.ndarray((len(Data0),d_in))
+NPLabels0=np.ndarray((len(Data0)))
+NPData1=np.ndarray((len(Data1),d_in))
+NPLabels1=np.ndarray((len(Data1)))
 NPData=np.ndarray((len(Data),d_in))
 NPLabels=np.ndarray((len(Data)))
-for i in range(len(Data)):
+for i in range(len(Data0)):
     for j in range(d_in):
-        NPData[i][j]=Data[i][j]
-    NPLabels[i]=Data[i][-1]
+        NPData0[i][j]=Data0[i][j]
+    NPLabels0[i]=Data0[i][-1]
+for i in range(len(Data1)):
+    for j in range(d_in):
+        NPData1[i][j]=Data1[i][j]
+    NPLabels1[i]=Data1[i][-1]
 
+if BATCH_SIZE==0:
+    BATCH_SIZE=min(len(Data0),len(Data1))
+
+TensorData0=torch.from_numpy(NPData0).type(torch.FloatTensor).to(device=device)
+TensorLabels0=torch.from_numpy(NPLabels0).type(torch.LongTensor).to(device=device)
+TensorData1=torch.from_numpy(NPData1).type(torch.FloatTensor).to(device=device)
+TensorLabels1=torch.from_numpy(NPLabels1).type(torch.LongTensor).to(device=device)
 TensorData=torch.from_numpy(NPData).type(torch.FloatTensor).to(device=device)
 TensorLabels=torch.from_numpy(NPLabels).type(torch.LongTensor).to(device=device)
 
-train_set = torch.utils.data.TensorDataset(TensorData,TensorLabels)
+train_set0 = torch.utils.data.TensorDataset(TensorData0,TensorLabels0)
+train_set1 = torch.utils.data.TensorDataset(TensorData1,TensorLabels1)
 
 if BATCH_SIZE!=0:
-    train_loader = torch.utils.data.DataLoader(
-            dataset=train_set,
+    train_loader0 = torch.utils.data.DataLoader(
+            dataset=train_set0,
             batch_size=BATCH_SIZE,
             shuffle=True
             )
+    train_loader1 = torch.utils.data.DataLoader(
+            dataset=train_set1,
+            batch_size=BATCH_SIZE,
+            shuffle=True
+            )
+
+class TwoClassTrainLoader:
+    def __init__(self, tl0,tl1):
+        self.tl0=tl0
+        self.tl1=tl1
+    def __iter__(self):
+        return self
+    def __next__(self):
+        step,(x1,y1)=next(self.tl0)
+        step,(x2,y2)=next(self.tl1)
+        return step,(x1+x2,y1+y2)
+    def getEnu(self):
+        Enu=[]
+        for step,(x,y) in enumerate(self.tl0):
+            Enu.append((step,(x,y)))
+        i=0
+        for step,(x,y) in enumerate(self.tl0):
+            if i<len(Enu):
+                Enu[i]=(step,(Enu[i][1][0]+x,Enu[i][1][1]+y))
+            i+=1
+        return Enu
+
+train_loader=TwoClassTrainLoader(train_loader0,train_loader1)
+
 
 print("Label1:%s Label0:%s, Data:%s, BATCH_SIZE:%s"%(D1,D0,len(Data),BATCH_SIZE))
 #print(Data,Labels)
@@ -154,9 +201,9 @@ class TwoLayerNet(torch.nn.Module):
         return y_pred
 
 
-Epsilon=10e-10
-Target=0.99
-LossTarget=10e-10
+Epsilon=0#10e-10
+Target=0.2
+LossTarget=0#10e-10
 print("Target: ",Target)
 
 def CustomLoss(y_pred,y):
@@ -166,35 +213,16 @@ def CustomLoss(y_pred,y):
     return loss
 
 def validate(model):
-    print("TrainingSet:")
+    #print("TrainingSet:")
     Correct=0
     Correct0=0
     Correct1=0
     Pred0=0
     Pred1=0
-    if len(TensorData)<=MaxBlock:
-        y_preds=model(TensorData)
-        for i in range(TrainClass0Size+TrainClass1Size):
-            #y_pred=model(ValidateData[i][:-1])
-            y_pred=y_preds[i]
-            y_pred=0 if y_pred[0]>y_pred[1] else 1
-            #y_pred=1 if model(ValidateData[i][:-1])>0.5 else 0
-            if y_pred==0:
-                Pred0+=1
-            else:
-                Pred1+=1
-            if y_pred==TensorLabels[i]:
-                Correct+=1
-                if y_pred==1:
-                    Correct1+=1
-                else:
-                    Correct0+=1
-    else:
-        Start=0
-        while Start<len(TensorData):
-            #y_preds=torch.cat((y_preds,model(TensorData[Start:Start+MaxBlock])))
-            y_preds=model(TensorData[Start:Start+MaxBlock])
-            for i in range(len(y_preds)):
+    if False:
+        if len(TensorData)<=MaxBlock:
+            y_preds=model(TensorData)
+            for i in range(TrainClass0Size+TrainClass1Size):
                 #y_pred=model(ValidateData[i][:-1])
                 y_pred=y_preds[i]
                 y_pred=0 if y_pred[0]>y_pred[1] else 1
@@ -203,28 +231,48 @@ def validate(model):
                     Pred0+=1
                 else:
                     Pred1+=1
-                if y_pred==TensorLabels[Start+i]:
+                if y_pred==TensorLabels[i]:
                     Correct+=1
                     if y_pred==1:
                         Correct1+=1
                     else:
                         Correct0+=1
-            Start+=MaxBlock
-    print(TrainClass0Size,TrainClass1Size,Correct,Correct0,Correct1)
-    CR=Correct/(TrainClass0Size+TrainClass1Size)
-    #PR0=Correct0/(Pred0) if Pred0!=0 else 0
-    #PR1=Correct1/(Pred1) if Pred1!=0 else 0
-    #Recall0=Correct0/TrainClass0Size if TrainClass0Size!=0 else 0
-    #Recall1=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
-    #F10=2*Recall0*PR0/(Recall0+PR0) if (Recall0+PR0)!=0 else 0
-    #F11=2*Recall1*PR1/(Recall1+PR1) if (Recall1+PR1)!=0 else 0
-    #FF=2*F10*F11/(F10+F11) if (F10+F11)!=0 else 0
-    PR=Correct1/Pred1 if Pred1!=0 else 0
-    Recall=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
-    F1=2*PR*Recall/(PR+Recall) if PR+Recall!=0 else 0
-    print("CR:%s, PR:%s, Recall:%s, F1:%s"%(CR,PR,Recall,F1))
-    #if PR>Target and Recall>Target:
-    #    return True
+        else:
+            Start=0
+            while Start<len(TensorData):
+                #y_preds=torch.cat((y_preds,model(TensorData[Start:Start+MaxBlock])))
+                y_preds=model(TensorData[Start:Start+MaxBlock])
+                for i in range(len(y_preds)):
+                    #y_pred=model(ValidateData[i][:-1])
+                    y_pred=y_preds[i]
+                    y_pred=0 if y_pred[0]>y_pred[1] else 1
+                    #y_pred=1 if model(ValidateData[i][:-1])>0.5 else 0
+                    if y_pred==0:
+                        Pred0+=1
+                    else:
+                        Pred1+=1
+                    if y_pred==TensorLabels[Start+i]:
+                        Correct+=1
+                        if y_pred==1:
+                            Correct1+=1
+                        else:
+                            Correct0+=1
+                Start+=MaxBlock
+        print(TrainClass0Size,TrainClass1Size,Correct,Correct0,Correct1)
+        CR=Correct/(TrainClass0Size+TrainClass1Size)
+        #PR0=Correct0/(Pred0) if Pred0!=0 else 0
+        #PR1=Correct1/(Pred1) if Pred1!=0 else 0
+        #Recall0=Correct0/TrainClass0Size if TrainClass0Size!=0 else 0
+        #Recall1=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
+        #F10=2*Recall0*PR0/(Recall0+PR0) if (Recall0+PR0)!=0 else 0
+        #F11=2*Recall1*PR1/(Recall1+PR1) if (Recall1+PR1)!=0 else 0
+        #FF=2*F10*F11/(F10+F11) if (F10+F11)!=0 else 0
+        PR=Correct1/Pred1 if Pred1!=0 else 0
+        Recall=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
+        F1=2*PR*Recall/(PR+Recall) if PR+Recall!=0 else 0
+        print("CR:%s, PR:%s, Recall:%s, F1:%s"%(CR,PR,Recall,F1))
+        if PR>Target and Recall>Target:
+            return True
     #print("CR:%s, PR0:%s, PR1:%s, Recall0:%s, Recall1:%s, F1_0:%s, F1_1:%s, FF:%s"%(CR,PR0,PR1,Recall0,Recall1,F10,F11,FF))
     Correct=0
     Correct0=0
@@ -315,6 +363,7 @@ while 1:
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
     #model=torch.load("ScoringTrain/Model0179/Model0179.pickle")
     #model=torch.load("data/ScoringTrainModelData")
+    model=torch.load(SavePath)
     #model=model.to(device=device)
     #validate(model)
     #exit(0)
@@ -354,7 +403,17 @@ while 1:
     for it in range(N):
         AveLoss=0
         if BATCH_SIZE!=0:
-            for step,(x,y) in enumerate(train_loader):
+            #for step,(x,y) in train_loader.getEnu():
+            enu0=iter(train_loader0)
+            enu1=iter(train_loader1)
+            while 1:
+                try:
+                    (x0,y0)=next(enu0)
+                    (x1,y1)=next(enu1)
+                except:
+                    break
+                x=torch.cat((x0,x1))
+                y=torch.cat((y0,y1))
                 #print(step,x.shape)
                 #y_pred=model(TensorData.float())
                 y_pred=model(x)
@@ -399,7 +458,7 @@ while 1:
             loss.backward()
             #print(loss)
             optimizer.step()
-        AveLoss/=len(Data)
+        AveLoss/=min(len(Data1),len(Data0))*2
         print(it,AveLoss)
         if not Changed and AveLoss<0.55:
             #optimizer=torch.optim.SGD(model.parameters(), lr=learning_rate,momentum=0.1)

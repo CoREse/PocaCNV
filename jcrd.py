@@ -13,9 +13,12 @@ from joint import uniformlyCombine
 import json
 import multiprocessing as mp
 from jcio import *
+import pickle
+import codecs
 
 import os
 import psutil
+import gc
 
 if __name__ == "__main__":
     process = psutil.Process(os.getpid())
@@ -38,6 +41,8 @@ if __name__ == "__main__":
     g.ReferencePath=None
     g.SamplePaths=[]
     g.ThreadNR=None
+
+    g.VcfHeaderContigs=None#if print header, should have all contigs tunples[(Name,Length)] if is the first contig
     def usage():
         print("""python3 jcrd [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
     Arguments:
@@ -96,6 +101,9 @@ if __name__ == "__main__":
                 elif a=="-EP":
                     g.EDataPath=sys.argv[i+1]
                     i+=1
+                elif a=="-PH":
+                    g.VcfHeaderContigs=pickle.loads(codecs.decode(sys.argv[i+1].encode(),"base64"))
+                    i+=1
                 else:
                     g.SamplePaths.append(sys.argv[i])
             except Exception as e:
@@ -141,7 +149,6 @@ if __name__ == "__main__":
     if g.WriteRDDataOnly:
         exit(0)
 
-    HeadReported=False
     for ci in range(len(mygenome.Contigs)):
         print(gettime()+"Starting call for contig %s..."%(mygenome.Contigs[ci].Name),file=sys.stderr)
         ContigGenome=Genome(mygenome.Name)
@@ -149,7 +156,7 @@ if __name__ == "__main__":
         TheContig=mygenome.Contigs[ci].getNew(ContigGenome)
         ContigGenome.RefID.append(mygenome.RefID[ci])
         ContigGenome.append(TheContig)
-
+        gc.collect()
 
         SampleIndex=0
 
@@ -169,9 +176,8 @@ if __name__ == "__main__":
             #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
             #exit(0)
             globals.SampleNames=SampleNames
-            if not HeadReported:
-                reportVCFHeader(sys.stdout,mygenome)
-                HeadReported=True
+            if g.VcfHeaderContigs!=None:
+                reportVcfHeaderGeneral(sys.stdout,g.ReferencePath,g.Parameters,g.VcfHeaderContigs,SampleNames)
             #calclulateSequenceDepthRatio()
 
             if g.ExcludeRegionsFileName!=None:

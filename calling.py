@@ -60,8 +60,9 @@ def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     HasSDRP=1 if SDRPN>0 else 0
     HasMultiSDRP=1 if SDRPN>1 else 0
     if (SegFileNNumber[0]!=None):
-        print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio),file=SegFileNNumber[0])
-    DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
+        print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,SiblingRatio,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio),file=SegFileNNumber[0])
+    #DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
+    DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio]
     #print(DataItem,file=sys.stderr)
     #return torch.Tensor([SegFileNNumber[1],TheContig.NLength,SiblingCount,E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,ChrNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0])
     return torch.Tensor(DataItem)

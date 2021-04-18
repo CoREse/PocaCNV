@@ -10,6 +10,7 @@ PROJECT_OBJS=jc.o
 PROJECT_HEADERS=
 EXAMPLE_OBJS=
 HTSLIB=htslib/libhts.a
+LAUNCHER=./launcher
 
 .PHONY: all test clean
 
@@ -59,10 +60,10 @@ test2122: build
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 -C 21 > data/test2122.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test2122.vcf
 test22: build
-	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /data/0/cre/CHS/samples.txt data/test22.vcf
 test22light: build
-	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/HG0040*CHS*.cram.sd -C 22 > data/test22light.vcf
+	time ./launcher -T ~/data/0/hs37d5.fa.gz -WS 100 data/HG0040*CHS*.cram.sd -C 22 > data/test22light.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22light.vcf
 test22tg: build
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 data/*.cram.sd -C 22 > data/test22tg.vcf
@@ -86,6 +87,10 @@ clmwhole: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CLM/*CLM*.cram -EN CLM > data/clmwhole.vcf 2> data/clmwhole.log
 cdxwhole: cython
 	time python3 -u jcrd.py -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CDX/*CDX*.cram -EN CDX > data/cdxwhole.vcf 2> data/cdxwhole.log
+3g: build
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -EN CHS > data/test3gCHS.vcf 2> logs/test3g.log
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/test3gCDX.vcf 2>> logs/test3g.log
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/test3gCLM.vcf 2>> logs/test3g.log
 debug:
 	bash debugs/debug.sh
 bench:

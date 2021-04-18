@@ -232,7 +232,6 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
 
     double * SampleReadCount=(double *)malloc(sizeof(double)*SampleN);
 
-    //double *StandardsAcc=(double*)malloc((WindowN+1)*sizeof(double));
     float* *WindowsAcc=(float * *)malloc(sizeof(float*)*SampleN);
     #pragma omp parallel for
     for (int j=0;j<SampleN;++j)
@@ -299,11 +298,11 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
 
     fprintf(stderr,"cleaning up...");
     free(SampleReadCount);
-    //free(StandardsAcc);
     free(Scores);
     free(CNPriors);
     for (i=0;i<SampleN;++i) free(WindowsAcc[i]);
     for (i=0;i<Size;++i) freeCand(Cands+i);
+    free(WindowsAcc);
     free(Cands);
     fprintf(stderr,"before return fine.Size:%d",i);
     return Results;

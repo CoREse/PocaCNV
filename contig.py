@@ -49,6 +49,7 @@ class Contig:
         self.RDWindows=None
         self.MixedRDRs=None
         self.DRPs=None
+        self.RDWindowsAcc=None
     
     def getNew(self,TheGenome):
         return Contig(self.Name,self.NLength,self.RDWindowSize,TheGenome)

@@ -215,6 +215,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     #    print(CMixedRDRs[0][i],file=mrdf)
     free(CRDWindows)
     free(CMixedRDRs)
+    free(CRDWindowsAcc)
     #for i in range(SampleN):
     #    for j in range(WindowsN):
     #        print(MixedRDRs[i][j])
