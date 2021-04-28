@@ -271,13 +271,13 @@ class VariantRecords:
                         SelfMatchedDup+=len(RSamples[SN][i][0])
         AS=Matched/OtherN if OtherN!=0 else 0
         AP=SelfMatched/SelfN if SelfN!=0 else 0
-        AF1=2*(AS*AP)/(AS+AP)
+        AF1=2*(AS*AP)/(AS+AP) if (AS+AP)!= 0 else 0
         DS=MatchedDel/OtherDelN if OtherDelN!=0 else 0
         DP=SelfMatchedDel/SelfDelN if SelfDelN!=0 else 0
-        DF1=2*(DS*DP)/(DS+DP)
+        DF1=2*(DS*DP)/(DS+DP) if (DS+DP)!= 0 else 0
         DuS=MatchedDup/OtherDupN if OtherDupN!=0 else 0
         DuP=SelfMatchedDup/SelfDupN if SelfDupN!=0 else 0
-        DuF1=2*(DuS*DuP)/(DuS+DuP)
+        DuF1=2*(DuS*DuP)/(DuS+DuP) if (DuS+DuP)!= 0 else 0
         Out= "All: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s\nDel: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s\nDup: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s"%(\
             AS,Matched,OtherN,AP,SelfMatched,SelfN,AF1\
                 ,DS,MatchedDel,OtherDelN,DP,SelfMatchedDel,SelfDelN,DF1\

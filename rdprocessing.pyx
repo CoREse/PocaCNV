@@ -2,7 +2,6 @@
 #cython: language_level=3, std=c++11
 cimport cython
 from cython.parallel import parallel,prange
-import ctypes
 from libc.stdlib cimport malloc,free
 from libc.math cimport pow,fabs
 from cpython cimport array

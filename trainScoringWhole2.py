@@ -90,7 +90,8 @@ for DataFileName in sys.argv[2:]:
         HasMultiSDRP=float(sl[13])
         SDRPRatio=float(sl[14])
         ACL=float(sl[15])
-        Label=int(sl[16])
+        Ploidy=float(sl[16])
+        Label=int(sl[17])
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo]+CNPriors+[Label]
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN) if int(CN)<len(CNPriors) else -1],Label]
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,Label]
@@ -100,7 +101,7 @@ for DataFileName in sys.argv[2:]:
         EndPortion=End/ContigLength
         HasSibling=1 if SiblingCount>0 else 0
         MultiSibling=1 if SiblingCount>1 else 0
-        DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio,ACL,Label]
+        DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio,ACL,Ploidy,Label]
         #print(DataItem)
         #DataItem=[ContigLength,SiblingCount,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,Label]
         #DataTensor=torch.Tensor([SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,Label])

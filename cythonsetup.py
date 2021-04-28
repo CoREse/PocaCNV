@@ -9,7 +9,15 @@ import numpy
 ext_modules = [
     Extension(
         "rdprocessing",
-        ["rdprocessing.pyx","getRDScores.cpp","drpprocessing.pyx"],
+        ["rdprocessing.pyx","getRDScores.cpp"],
+        #libraries=["CGetRDScores"],
+        extra_compile_args=['-fopenmp', '-O3', "-std=c++11"],
+        extra_link_args=['-fopenmp'],
+        language="c++"
+    ),
+    Extension(
+        "drpprocessing",
+        ["drpprocessing.pyx"],
         #libraries=["CGetRDScores"],
         extra_compile_args=['-fopenmp', '-O3', "-std=c++11"],
         extra_link_args=['-fopenmp'],
