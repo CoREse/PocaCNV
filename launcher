@@ -31,7 +31,7 @@ def getParas(argv):
                 i+=1
             elif a=='-WO':
                 WriteRDData=True
-                WriteRDDataOnly=True
+                WriteRDDataOnly[0]=True
             elif a=="-WM":
                 WriteMixedRDData=True
             elif a=='-C':
@@ -60,6 +60,8 @@ def getParas(argv):
                 i+=1
             else:
                 SamplePaths.append(argv[i])
+                if argv[i].split(".")[-1]!="sd":
+                    HasSam[0]=True
         except Exception as e:
             print(e,file=sys.stderr)
             usage()
@@ -68,14 +70,39 @@ def getParas(argv):
         usage()
         exit(0)
 
+PythonName="python3"
+ProgramName="jcrd.py"
+
 ReferencePath=[]
 SamplePaths=[]
 ContigsToGo=set()
 Contigs=[]
-
-from globals import Parameters
+WriteRDDataOnly=[False]
+HasSam=[False]
 
 getParas(sys.argv)
+
+WriteRDDataOnly=WriteRDDataOnly[0]
+HasSam=HasSam[0]
+if HasSam:
+    SamplePaths=[]
+    args=sys.argv[1:]
+    if not WriteRDDataOnly:
+        args.append("-WO")
+    run=subprocess.Popen([PythonName,"-u",ProgramName]+args,bufsize=1,stdout=subprocess.PIPE,universal_newlines=True)
+    while True:
+        line=run.stdout.readline()
+        if line=="":
+            break
+        SamplePaths.append(line.strip())
+    print(SamplePaths,file=sys.stderr)
+    run.wait()
+    run.terminate()
+    run.kill()
+
+if WriteRDDataOnly:
+    exit(0)
+
 ReferencePath=ReferencePath[0]
 
 ReferenceFile=pysam.FastaFile(ReferencePath)
@@ -85,11 +112,6 @@ for tid in range(ReferenceFile.nreferences):
             continue
     Contigs.append((ReferenceFile.references[tid],ReferenceFile.lengths[tid]))
 ReferenceFile.close()
-
-
-PythonName="python3"
-ProgramName="jcrd.py"
-
 
 args=[]
 i=1

@@ -147,6 +147,8 @@ if __name__ == "__main__":
     print(gettime()+"Reading samples...",file=sys.stderr)
     SDPaths=readSamAndSaveSD(mygenome,g.SamplePaths)#return SD SamplePaths
     if g.WriteRDDataOnly:
+        for p in SDPaths:
+            print(p)
         exit(0)
 
     for ci in range(len(mygenome.Contigs)):

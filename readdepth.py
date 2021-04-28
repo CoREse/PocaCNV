@@ -12,6 +12,7 @@ import multiprocessing as mp
 import subprocess
 from sara import SaRa
 from drpprocessing import *
+from cllprocessing import *
 
 #import pyximportcpp; pyximportcpp.install()
 from rdprocessing import *
@@ -119,86 +120,6 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=g.StatLocal):#g
     SRC=g.AllReadCount'''
     return (SRS,SRC)"""
 
-class RDInterval:
-    def __init__(self,Sample,WBegin,WEnd,ARD,Ploidy,TheContig=None,RDWindowSize=None):#multiprocessing will make g.RDWindowSize to default value
-        self.WBegin=WBegin
-        self.WEnd=WEnd
-        self.AverageRD=ARD
-        self.Sample=Sample
-        self.Ploidy=Ploidy
-        self.TheContig=TheContig
-        if RDWindowSize==None:
-            self.RDWindowSize=g.RDWindowSize
-        else:
-            self.RDWindowSize=RDWindowSize
-        self.refresh()
-    def refresh(self):
-        self.Begin=self.WBegin*self.RDWindowSize
-        self.End=self.WEnd*self.RDWindowSize
-        self.SupportedSVType=None#0:del, 1:insertion, 2:dup
-        self.mu=None
-        self.mus=None
-        if 1.8<self.AverageRD<2.2:
-            self.CN=2
-        elif 1.5<=self.AverageRD<=1.8:
-            self.CN=1
-        elif 2.2<=self.AverageRD<=1.5:
-            self.CN=3
-        else:
-            self.CN=int(self.AverageRD+0.5)
-        #if self.CN==0 or self.CN==1:
-        if self.CN<self.Ploidy:
-            self.SupportedSVType=0
-        elif self.CN>self.Ploidy:
-            self.SupportedSVType=2
-    def setContig(TheContig):
-        self.TheContig=TheContig
-    def calcMuMus(self,TheContig=None,SP=None, local=g.StatLocal):#SP[0]=RDSum, SP[1]=Sample Read Count Sum(g.AllReadCount)
-        if TheContig==None:
-            TheContig=self.TheContig
-        if TheContig==None:
-            raise Exception("No contig given.")
-        if SP==None:
-            SP=getSP(TheContig,self.WBegin,self.WEnd,local=local)
-        Stat=g
-        if local:
-            Stat=TheContig
-        mu=SP[0]*(Stat.SampleReadCount[self.Sample]/SP[1])
-        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
-        mu=int(mu+0.5)
-        mus=int(mus+0.5)
-        self.mu=mu
-        self.mus=mus
-        return mu,mus
-
-    def calcMuMusOld(self,TheContig=None,RDS=None,RDSAcc=None):
-        if TheContig==None:
-            TheContig=self.TheContig
-        if TheContig==None:
-            raise Exception("No contig given.")
-        RDSData=TheContig.RDWindowStandards
-        if RDS!=None:
-            RDSData=RDS
-        length=self.WEnd-self.WBegin
-        mu=0
-        mus=0
-        if RDSAcc==None:
-            if RDS==None:
-                RDSAcc=TheContig.RDWindowStandardsAcc
-        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
-        if RDSAcc==None:
-            for i in range(self.WBegin,self.WEnd):
-                mu+=RDSData[i]
-                #mus+=TheContig.RDWindows[self.Sample][i]
-            #mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*RDSData[i]
-        else:
-            mu=RDSAcc[self.WEnd]-RDSAcc[self.WBegin]
-        mu=int(mu+0.5)
-        mus=int(mus+0.5)
-        self.mu=mu
-        self.mus=mus
-        return mu,mus
-
 def scanConZero(SampleMRDRs):
     Begin=None
     AsZero=0.25
@@ -223,23 +144,32 @@ def scanConZero(SampleMRDRs):
                 Begin=None
     return Ints
 
-def makeSampleRDEvidences(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=None):
+def makeSampleRDEvidences(SampleData,SampleI,SampleName,Ploidy,RDWindowSize=None,SampleSegData=None,SampleDataAcc=None):
     print(gettime()+"segmenting %s..."%SampleName,file=sys.stderr)
     #SampleMRDRs=g.MyGenome.get(ContigName).MixedRDRs[SampleI]
     sys.stderr.flush()
     #for i in range(len(SampleMRDRs)):
     #    print(SampleMRDRs[i])
     #exit(0)
+    if SampleSegData==None:
+        SampleSegData=SampleData
     SampleIntervals=[]
-    CutOffs=segmentation(SampleMRDRs)
+    CutOffs=segmentation(SampleSegData)
     Last=0
-    for End,Ave in CutOffs:
-        Ave=0
-        for i in range(Last,End):
-            Ave+=SampleMRDRs[i]
-        Ave/=End-Last
-        SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,Ploidy,None,RDWindowSize))
-        Last=End
+    if SampleDataAcc==None:
+        for End,Ave in CutOffs:
+            Ave=0
+            for i in range(Last,End):
+                Ave+=SampleData[i]
+            Ave/=End-Last
+            SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,Ploidy,None,RDWindowSize))
+            Last=End
+    else:
+        for End,Ave in CutOffs:
+            Ave=SampleDataAcc[End]-SampleDataAcc[Last]
+            Ave/=End-Last
+            SampleIntervals.append(RDInterval(SampleI,Last,End,Ave,Ploidy,None,RDWindowSize))
+            Last=End
     SampleIntervals.sort(key=lambda I:I.WBegin)
     SampleEvidences=[]
     for I in SampleIntervals:
@@ -247,16 +177,19 @@ def makeSampleRDEvidences(SampleMRDRs,SampleI,SampleName,Ploidy,RDWindowSize=Non
             e=Evidence()
             e.setData(1,I)
             SampleEvidences.append(e)
-    del SampleMRDRs
+    del SampleData
+    del SampleSegData
     del SampleIntervals
     return SampleEvidences
 
-def makeRDEvidences(MixedRDRs,TheContig):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
+def makeRDEvidences(Data,TheContig,SegData=None,DataAcc=None):#because robjects.r is singleton, use multiprocessing instead of multithreading #seems it's rpy2 that consumes much memory
+    if SegData==None:
+        SegData=Data
     if g.RParallel:
-        CutOffs=dnacopy_cbs_multi(MixedRDRs)
+        CutOffs=dnacopy_cbs_multi(SegData)
         #Intervals=[]
         Evidences=[]
-        for i in range(len(MixedRDRs)):
+        for i in range(len(Data)):
             Ploidy=TheContig.Ploidies[i]
             Intervals=[]
             Evidences.append([])
@@ -264,7 +197,7 @@ def makeRDEvidences(MixedRDRs,TheContig):#because robjects.r is singleton, use m
             for End,Ave in CutOffs[i]:
                 Ave=0
                 for j in range(Last,End):
-                    Ave+=MixedRDRs[i][j]
+                    Ave+=Data[i][j]
                 Ave/=End-Last
                 Intervals.append(RDInterval(i,Last,End,Ave,Ploidy,None,g.RDWindowSize))
                 Last=End
@@ -276,16 +209,16 @@ def makeRDEvidences(MixedRDRs,TheContig):#because robjects.r is singleton, use m
                     Evidences[i].append(e)
         #TheContig.Intervals=Intervals
         return Evidences
-    if g.ThreadN==1 or len(MixedRDRs[0])<10000:#process cost is big
-        Evidences=[None]*len(MixedRDRs)
-        for i in range(len(MixedRDRs)):
-            Evidences[i]=makeSampleRDEvidences(MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize)
+    if g.ThreadN==1 or len(Data[0])<10000:#process cost is big
+        Evidences=[None]*len(Data)
+        for i in range(len(Data)):
+            Evidences[i]=makeSampleRDEvidences(Data[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize,SegData[i],DataAcc[i] if DataAcc!=None else None)
     else:
         ctx=mp.get_context("fork")
         pool=ctx.Pool(g.ThreadN)
         args=[]
-        for i in range(len(MixedRDRs)):
-            args.append((MixedRDRs[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize))
+        for i in range(len(Data)):
+            args.append((Data[i],i,g.SampleNames[i],TheContig.Ploidies[i],g.RDWindowSize,SegData[i],DataAcc[i] if DataAcc!=None else None))
         addPool(pool)
         Evidences=pool.starmap(makeSampleRDEvidences,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
@@ -486,11 +419,15 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     for i in range(SampleN):
         RDWindowsAcc.append(array("f",[0]*(WindowsN+1)))
     RDWindowStandardsAcc=array("f",[0]*(WindowsN+1))
+    MixedRDRsAcc=[]
+    for i in range(SampleN):
+        MixedRDRsAcc.append(array("f",[0]*(WindowsN+1)))
     TheContig.MixedRDRs=MixedRDRs
     #TheContig.RDWindowStandards=RDWindowStandards
     TheContig.RDWindowsAcc=RDWindowsAcc
+    TheContig.MixedRDRsAcc=MixedRDRsAcc
 
-    processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, TheContig.Ploidies)
+    processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, MixedRDRsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, TheContig.Ploidies)
     
     g.ERD=1.0#ERD
     #g.MixedRDRs=MixedRDRs
@@ -498,8 +435,16 @@ def analyzeRD(RDWindows,WindowsN,TheContig,NormalizationOnly=False):
     #TheContig.MRMedians=MRMedians
     if NormalizationOnly:
         return MixedRDRs
-
-    RDICandidates=makeRDICandidates(processEvidencesWithDRPs(makeRDEvidences(MixedRDRs,TheContig),TheContig))
+    MRDEvidences=makeRDEvidences(MixedRDRs,TheContig,DataAcc=TheContig.MixedRDRsAcc)
+    CLLEvidences=makeRDEvidences(MixedRDRs,TheContig,TheContig.AverageClipLengths,DataAcc=TheContig.MixedRDRsAcc)
+    Evidences=combineEvidences(MRDEvidences,CLLEvidences,TheContig)
+    EvidenceN=0
+    for i in range(SampleN):
+        EvidenceN+=len(Evidences[i])
+    warn("Number of evidences:%s"%EvidenceN)
+    Evidences=processEvidencesWithDRPs(Evidences,TheContig)
+    Evidences=processEvidencesWithCLL(Evidences,TheContig)
+    RDICandidates=makeRDICandidates(Evidences)
     SegSD=False
     if SegSD:
         SDCandidates=getSDCandidates(TheContig)

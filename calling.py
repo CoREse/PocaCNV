@@ -27,7 +27,7 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
         SampleReadCount=g.SampleReadCount
     Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,ThreadN,SampleReadCount)
     print(gettime()+"Filting NN...",file=sys.stderr)
-    model=torch.load("data/ScoringTrainModelData")
+    model=torch.load("data/ScoringTrainModelData",map_location=torch.device('cpu'))
     for i in range(len(Candidates)):
         #Scores.append(getScore(Candidates[i],TheContig))
         passNN(Candidates[i],TheContig,Scores[i],(EDF,i),model)
@@ -45,6 +45,7 @@ def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     MuS=E.Data.mus
     PassConfidence=E.PassConfidence
     CN=E.Data.CN
+    Ploidy=E.Data.Ploidy
     Confidence=E.Confidence
     #CScore=float(sl[10])
     Length=End-Start
@@ -54,15 +55,17 @@ def printEData(SegFileNNumber, TheContig, SiblingCount, E,CScore):
     MultiSibling=1 if SiblingCount>1 else 0
     SampleCount=len(TheContig.SampleNames)
     SiblingRatio=SiblingCount/SampleCount
-    SDRPN=len(E.SupportedDRPs)
+    #SDRPN=len(E.SupportedDRPs)
+    SDRPN=E.SupportedDRPCount
     ContigSampleReadCoverage=TheContig.ContigSampleReadCounts[E.Sample]/TheContig.NLength
     SDRPRatio=SDRPN/ContigSampleReadCoverage if ContigSampleReadCoverage!=0 else 0
     HasSDRP=1 if SDRPN>0 else 0
     HasMultiSDRP=1 if SDRPN>1 else 0
+    ACL=E.ACL
     if (SegFileNNumber[0]!=None):
-        print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,SiblingRatio,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio),file=SegFileNNumber[0])
+        print("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"%(SegFileNNumber[1],TheContig.NLength,SiblingCount,SiblingRatio,g.SampleNames[E.Sample],E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,HasSDRP,HasMultiSDRP,SDRPRatio,ACL),file=SegFileNNumber[0])
     #DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0]
-    DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio]
+    DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio,ACL]
     #print(DataItem,file=sys.stderr)
     #return torch.Tensor([SegFileNNumber[1],TheContig.NLength,SiblingCount,E.Begin,E.End,E.Data.mu,E.Data.mus,E.PassConfidence,E.Data.CN,E.Confidence,CScore,ChrNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0])
     return torch.Tensor(DataItem)

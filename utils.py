@@ -3,6 +3,7 @@ import time
 import os
 import psutil
 import sys
+from rdprocessing import *
 
 def gettime():
     return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
@@ -212,14 +213,96 @@ class Candidate:
                 if e.Data.WEnd<=e.Data.WBegin:
                     e.Data.WEnd=e.Data.WBegin+1
 
+class RDInterval:
+    def __init__(self,Sample,WBegin,WEnd,ARD,Ploidy,TheContig=None,RDWindowSize=None):#multiprocessing will make g.RDWindowSize to default value
+        self.WBegin=WBegin
+        self.WEnd=WEnd
+        self.AverageRD=ARD
+        self.Sample=Sample
+        self.Ploidy=Ploidy
+        self.TheContig=TheContig
+        if RDWindowSize==None:
+            self.RDWindowSize=g.RDWindowSize
+        else:
+            self.RDWindowSize=RDWindowSize
+        self.refresh()
+    def refresh(self):
+        self.Begin=self.WBegin*self.RDWindowSize
+        self.End=self.WEnd*self.RDWindowSize
+        self.SupportedSVType=None#0:del, 1:insertion, 2:dup
+        self.mu=None
+        self.mus=None
+        if 1.8<self.AverageRD<2.2:
+            self.CN=2
+        elif 1.5<=self.AverageRD<=1.8:
+            self.CN=1
+        elif 2.2<=self.AverageRD<=1.5:
+            self.CN=3
+        else:
+            self.CN=int(self.AverageRD+0.5)
+        #if self.CN==0 or self.CN==1:
+        if self.CN<self.Ploidy:
+            self.SupportedSVType=0
+        elif self.CN>self.Ploidy:
+            self.SupportedSVType=2
+    def setContig(TheContig):
+        self.TheContig=TheContig
+    def calcMuMus(self,TheContig=None,SP=None, local=g.StatLocal):#SP[0]=RDSum, SP[1]=Sample Read Count Sum(g.AllReadCount)
+        if TheContig==None:
+            TheContig=self.TheContig
+        if TheContig==None:
+            raise Exception("No contig given.")
+        if SP==None:
+            SP=getSP(TheContig,self.WBegin,self.WEnd,local=local)
+        Stat=g
+        if local:
+            Stat=TheContig
+        mu=SP[0]*(Stat.SampleReadCount[self.Sample]/SP[1])
+        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
+        mu=int(mu+0.5)
+        mus=int(mus+0.5)
+        self.mu=mu
+        self.mus=mus
+        return mu,mus
+
+    def calcMuMusOld(self,TheContig=None,RDS=None,RDSAcc=None):
+        if TheContig==None:
+            TheContig=self.TheContig
+        if TheContig==None:
+            raise Exception("No contig given.")
+        RDSData=TheContig.RDWindowStandards
+        if RDS!=None:
+            RDSData=RDS
+        length=self.WEnd-self.WBegin
+        mu=0
+        mus=0
+        if RDSAcc==None:
+            if RDS==None:
+                RDSAcc=TheContig.RDWindowStandardsAcc
+        mus=TheContig.RDWindowsAcc[self.Sample][self.WEnd]-TheContig.RDWindowsAcc[self.Sample][self.WBegin]
+        if RDSAcc==None:
+            for i in range(self.WBegin,self.WEnd):
+                mu+=RDSData[i]
+                #mus+=TheContig.RDWindows[self.Sample][i]
+            #mus+=TheContig.MixedRDRs[self.Sample][i]/2.0*RDSData[i]
+        else:
+            mu=RDSAcc[self.WEnd]-RDSAcc[self.WBegin]
+        mu=int(mu+0.5)
+        mus=int(mus+0.5)
+        self.mu=mu
+        self.mus=mus
+        return mu,mus
+
 class Evidence:
-    CombinePercentage=0.9
+    CombinePercentage=0.8
     def __init__(self,Type=0,Data=None,Begin=0xffffffff,End=0):
         self.Type=Type#Type: 0: DR cluster, Data is array of PairInfo;1: RD Interval, Data is a RDInterval
         self.Data=Data
         self.Begin=Begin
         self.End=End
-        self.SupportedDRPs=[]
+        #self.SupportedDRPs=[]
+        self.SupportedDRPCount=0
+        self.Combined=1
         self.analyzeData()
     
     def setData(self, Type, Data):
@@ -252,27 +335,63 @@ class Evidence:
             self.SupportedSVType=self.Data.SupportedSVType
             self.Sample=self.Data.Sample
 
-    #do not use this
-    def combineEvidence(self, other):#DO NOT USE THIS! return: 0: not combine, 1: combine, -1: not overlap
-        if self.Spread[0]<other.Spread[1] and self.Spread[0]>other.Spread[0]:
-            Overlap=min(other.Spread[1]-self.Spread[0],self.Spread[1]-self.Spread[0])
-        elif self.Spread[1]>other.Spread[0] and self.Spread[1]<other.Spread[0]:
-            Overlap=self.Spread[1]-other.Spread[0]
-        elif other.Spread[0]>self.Spread[0] and other.Spread[0]<self.Spread[1]:#self covers other
-            Overlap=other.Spread[1]-other.Spread[0]
-        else:
-            Overlap=0
+    def combineEvidence(self, other, TheContig):#return: 0: not combine, 1: combine, -1: not overlap
+        Overlap=calcOverlap(self.Begin,self.End,other.Begin,other.End)
+        if Overlap==-1:
             return -1
-        #MinLength=min(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
-        if sefl.Type==1:
+        if self.SupportedSVType!=other.SupportedSVType or self.Sample!=other.Sample:
             return 0
-        MaxLength=max(self.Spread[1]-self.Spread[0],other.Spread[1]-other.Spread[0])
-        Overlap=Overlap/MaxLength if MaxLength!=0 else 0
-        if Overlap>=Evidence.CombinePercentage:
-            self.Data+=other.Data
-            self.Spread=(min(self.Spread[0],other.Spread[0]),max(self.Spread[1],other.Spread[1]))
-            return 1
-        return 0
+        MaxLength=max(self.End-self.Begin,other.End-other.Begin)
+        if Overlap/MaxLength<Evidence.CombinePercentage:
+            return 0
+        self.Begin=self.Begin*self.Combined+other.Begin*other.Combined
+        self.Begin=int(self.Begin/(self.Combined+other.Combined))
+        self.End=self.End*self.Combined+other.End*other.Combined
+        self.End=int(self.End/(self.Combined+other.Combined))
+        self.Combined+=other.Combined
+        WBegin=int(self.Begin/self.Data.RDWindowSize)
+        WEnd=int(self.End/self.Data.RDWindowSize)
+        MixedRDRsAcc=None
+        try:
+            MixedRDRsAcc=TheContig.MixedRDRsAcc[self.Sample]
+        except:
+            MixedRDRsAcc=None
+        if MixedRDRsAcc!=None:
+            ARD=MixedRDRsAcc[WEnd]-MixedRDRsAcc[WBegin]
+        else:
+            ARD=0
+            for i in range(WBegin,WEnd):
+                ARD+=TheContig.MixedRDRs[self.Sample][i]
+        ARD/=WEnd-WBegin
+        NewInterval=RDInterval(self.Sample,WBegin,WEnd,ARD,self.Data.Ploidy,TheContig)
+        self.Data=NewInterval
+        return 1
+
+def combineEvidences(Evidences1,Evidences2,TheContig):
+    Evidences=[]
+    for i in range(len(Evidences1)):
+        #Evidences.append(Evidences1[i]+Evidences2[i])
+        #continue
+        NewSampleEvidences=[]
+        SampleEvidences=Evidences1[i]+Evidences2[i]
+        SampleEvidences.sort(key=lambda c:c.Begin)
+        ni=-1
+        for j in range(len(SampleEvidences)):
+            if SampleEvidences[j]==None:
+                continue
+            NewSampleEvidences.append(SampleEvidences[j])
+            ni+=1
+            SampleEvidences[j]=None
+            for k in range(j+1,len(SampleEvidences)):
+                if SampleEvidences[k]==None:
+                    continue
+                mr=NewSampleEvidences[ni].combineEvidence(SampleEvidences[k],TheContig)
+                if mr==-1:
+                    break
+                elif mr==1:
+                    SampleEvidences[k]=None
+        Evidences.append(NewSampleEvidences)
+    return Evidences
 
 def combineCandidateSets(Candidates1, Candidates2):
     NewCandidateSet=[]

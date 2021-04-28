@@ -52,7 +52,7 @@ def getSP(TheContig, WBegin, WEnd, NSD=3, MinimumTake=0.8, local=g.StatLocal):#g
 cdef double CgetNormalRDDirect(double * StatisticalReadCounts, double * StatisticalRDWindowSums, double * SampleReadCount, unsigned long SampleI, unsigned long WindowI) nogil:
     return 0 if StatisticalReadCounts[WindowI]==0 else StatisticalRDWindowSums[WindowI]*(SampleReadCount[SampleI]/StatisticalReadCounts[WindowI])
 
-def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, Ploidies):
+def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindowsAcc, MixedRDRsAcc, StatisticalReadCounts, StatisticalRDWindowSums, SampleReadCount, Ploidies):
     Mean2Adjust=False
     Smooth=1
     RDWindowAverages=array("d",[0]*WindowsN)
@@ -89,6 +89,7 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
     cdef float ** CRDWindows=<float **>malloc(SampleN*sizeof(float*))
     cdef float ** CMixedRDRs=<float **>malloc(SampleN*sizeof(float*))
     cdef float ** CRDWindowsAcc=<float **>malloc(SampleN*sizeof(float*))
+    cdef float ** CMixedRDRsAcc=<float **>malloc(SampleN*sizeof(float*))
     #cdef size_t CTempAddress=ctypes.addressof(RDWindowAverages)
     cdef size_t TempAddr
     cdef int CThreadN=g.ThreadN
@@ -110,6 +111,8 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
         CMixedRDRs[i]=<float*>(TempArray.data.as_voidptr)
         TempArray=RDWindowsAcc[i]
         CRDWindowsAcc[i]=<float*>(TempArray.data.as_voidptr)
+        TempArray=MixedRDRsAcc[i]
+        CMixedRDRsAcc[i]=<float*>(TempArray.data.as_voidptr)
     TempArray=None
 
     cdef float Sum
@@ -213,9 +216,16 @@ def processingRD(RDWindows, SampleN, WindowsN, MixedRDRs, RDWindowSums, RDWindow
             CMixedRDRs[Ci][Cj]*=CPloidies[Ci]
     #for i in range(WindowsN):
     #    print(CMixedRDRs[0][i],file=mrdf)
+    for Ci in prange(CSampleN,nogil=True,num_threads=CThreadN):
+        Sum=0
+        for Cj from 0<=Cj<CWindowsN:
+            CMixedRDRsAcc[Ci][Cj]=Sum
+            Sum=CMixedRDRs[Ci][Cj]+Sum
+        CMixedRDRsAcc[Ci][CWindowsN]=Sum
     free(CRDWindows)
     free(CMixedRDRs)
     free(CRDWindowsAcc)
+    free(CMixedRDRsAcc)
     #for i in range(SampleN):
     #    for j in range(WindowsN):
     #        print(MixedRDRs[i][j])

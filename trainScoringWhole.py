@@ -12,7 +12,7 @@ device=torch.device("cpu")
 
 d_in=None
 d_out=2
-H=100
+H=200
 H2=100
 H3=100
 H4=100
@@ -22,12 +22,12 @@ HiddenLayersN=20
 # 规定学习率
 learning_rate = 1e-3
 
-BATCH_SIZE=1000
+BATCH_SIZE=100000
 MaxBlock=20000
 
 Even=False
 
-ValidateTurn=50
+ValidateTurn=10
 SaveAlong=True
 
 ValidatePortion=0.05
@@ -63,7 +63,8 @@ for DataFileName in sys.argv[1:]:
         HasSDRP=float(sl[12])
         HasMultiSDRP=float(sl[13])
         SDRPRatio=float(sl[14])
-        Label=int(sl[15])
+        ACL=float(sl[15])
+        Label=int(sl[16])
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo]+CNPriors+[Label]
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN) if int(CN)<len(CNPriors) else -1],Label]
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,Label]
@@ -73,7 +74,7 @@ for DataFileName in sys.argv[1:]:
         EndPortion=End/ContigLength
         HasSibling=1 if SiblingCount>0 else 0
         MultiSibling=1 if SiblingCount>1 else 0
-        DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio,Label]
+        DataItem=[SiblingRatio,HasSibling,MultiSibling,Length,StartPortion,EndPortion,Mu,MuS,PassConfidence,CN,Confidence,CScore,CNPriors[int(CN)] if int(CN)<len(CNPriors) else 0,HasSDRP,HasMultiSDRP,SDRPRatio,ACL,Label]
         #print(DataItem)
         #DataItem=[ContigLength,SiblingCount,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,Label]
         #DataTensor=torch.Tensor([SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,Label])
@@ -114,8 +115,25 @@ TensorValidate=torch.from_numpy(NPValidate).to(device=device)
 
 Data0=Data0[ValidateClass0Size:ValidateClass0Size+TrainClass0Size]
 Data1=Data1[ValidateClass1Size:ValidateClass1Size+TrainClass1Size]
-Data=Data0+Data1
 #np.random.shuffle(Data)
+#AugmentedData1=[]
+#ASize=0
+#import random
+#while ASize<len(Data0):
+#    if ASize+len(Data1)<len(Data0):
+#        AugmentedData1+=Data1.copy()
+#        ASize+=len(Data1)
+#        #print(ASize,len(Data0),len(Data1))
+#    else:
+#        AugmentedData1+=Data1[:len(Data0)-ASize].copy()
+#        ASize=len(Data0)
+#for i in range(len(Data1),len(AugmentedData1)):
+#    for di in range(len(AugmentedData1[i])-1):
+#        Item=AugmentedData1[i]
+#        Item[di]=Item[di]*(1+0.5*2*(0.5-random.random()))
+#np.random.shuffle(AugmentedData1)
+#Data1=AugmentedData1
+Data=Data0+Data1
 
 NPData0=np.ndarray((len(Data0),d_in))
 NPLabels0=np.ndarray((len(Data0)))
@@ -132,8 +150,8 @@ for i in range(len(Data1)):
         NPData1[i][j]=Data1[i][j]
     NPLabels1[i]=Data1[i][-1]
 
-if BATCH_SIZE==0:
-    BATCH_SIZE=min(len(Data0),len(Data1))
+#if BATCH_SIZE==0:
+#    BATCH_SIZE=min(len(Data0),len(Data1))
 
 TensorData0=torch.from_numpy(NPData0).type(torch.FloatTensor).to(device=device)
 TensorLabels0=torch.from_numpy(NPLabels0).type(torch.LongTensor).to(device=device)
@@ -141,9 +159,12 @@ TensorData1=torch.from_numpy(NPData1).type(torch.FloatTensor).to(device=device)
 TensorLabels1=torch.from_numpy(NPLabels1).type(torch.LongTensor).to(device=device)
 TensorData=torch.from_numpy(NPData).type(torch.FloatTensor).to(device=device)
 TensorLabels=torch.from_numpy(NPLabels).type(torch.LongTensor).to(device=device)
+print(TensorData0.shape,TensorData1.shape,TensorData.shape)
 
 train_set0 = torch.utils.data.TensorDataset(TensorData0,TensorLabels0)
-train_set1 = torch.utils.data.TensorDataset(TensorData1,TensorLabels1)
+train_set1 = torch.utils.data.TensorDataset(TensorData1,TensorLabels1)#
+train_set = torch.utils.data.TensorDataset(TensorData,TensorLabels)
+#print(len(train_set0),len(train_set1))
 
 if BATCH_SIZE!=0:
     train_loader0 = torch.utils.data.DataLoader(
@@ -156,6 +177,11 @@ if BATCH_SIZE!=0:
             batch_size=BATCH_SIZE,
             shuffle=True
             )
+#    train_loader = torch.utils.data.DataLoader(
+#            dataset=train_set,
+#            batch_size=BATCH_SIZE,
+#            shuffle=True
+#            )
 
 class TwoClassTrainLoader:
     def __init__(self, tl0,tl1):
@@ -178,7 +204,7 @@ class TwoClassTrainLoader:
             i+=1
         return Enu
 
-train_loader=TwoClassTrainLoader(train_loader0,train_loader1)
+#train_loader=TwoClassTrainLoader(train_loader0,train_loader1)
 
 
 print("Label1:%s Label0:%s, Data:%s, BATCH_SIZE:%s"%(D1,D0,len(Data),BATCH_SIZE))
@@ -363,8 +389,8 @@ while 1:
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
     #model=torch.load("ScoringTrain/Model0179/Model0179.pickle")
     #model=torch.load("data/ScoringTrainModelData")
-    model=torch.load(SavePath)
-    #model=model.to(device=device)
+    #model=torch.load(SavePath)
+    model=model.to(device=device)
     #validate(model)
     #exit(0)
     # 规定loss function
@@ -403,17 +429,20 @@ while 1:
     for it in range(N):
         AveLoss=0
         if BATCH_SIZE!=0:
-            #for step,(x,y) in train_loader.getEnu():
+            #for step,(x,y) in enumerate(train_loader):
             enu0=iter(train_loader0)
             enu1=iter(train_loader1)
+            step=0
             while 1:
                 try:
                     (x0,y0)=next(enu0)
                     (x1,y1)=next(enu1)
+                    step+=1
                 except:
                     break
-                x=torch.cat((x0,x1))
-                y=torch.cat((y0,y1))
+                minlen=min(len(x0),len(x1))
+                x=torch.cat((x0[:minlen],x1[:minlen]))
+                y=torch.cat((y0[:minlen],y1[:minlen]))
                 #print(step,x.shape)
                 #y_pred=model(TensorData.float())
                 y_pred=model(x)
@@ -426,6 +455,7 @@ while 1:
                 loss.backward()
                 #print(loss)
                 optimizer.step()
+                break
                 #for l in loss:
                 #    AveLoss+=float(l)
                 '''

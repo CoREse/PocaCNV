@@ -2,7 +2,7 @@ from benchlib import *
 import sys
 
 
-percentage=0.5
+Percentage=0.8
 near=-1
 Contigs=None
 Contigs=None#["22"]
@@ -60,6 +60,9 @@ if len(sys.argv)>1:
         elif a=="-MSC":
             MinScore=float(sys.argv[i+1])
             i+=1
+        elif a=="-P":
+            Percentage=float(sys.argv[i+1])
+            i+=1
         else:
             MyF.append(a)
         i+=1
@@ -81,4 +84,4 @@ Test=VariantRecords("Test")
 for i in range(len(MyF)):
     Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength,MaxAF,MinScore)
 
-print(Test.interpret(Test.matchAll(Gold),PrintResult))
+print(Test.interpret(Test.matchAll(Gold,Percentage),PrintResult))

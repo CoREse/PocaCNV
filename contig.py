@@ -8,6 +8,7 @@ class Contig:
         self.NLength=length
         self.RDWindowSize=RDWindowSize
         self.RDWindows=[]
+        self.AverageClipLengths=[]
         self.SampleNames=[]
         self.MixedRDRs=None
         self.RDWindowStandards=None
@@ -29,14 +30,16 @@ class Contig:
 
     def addSample(self,name=""):
         self.RDWindows.append(array("f",[0]*self.Length))
+        self.AverageClipLengths.append(array("f",[0]*self.Length))
         #self.RDWindows.append(multiprocessing.sharedctypes.RawArray("f",[0]*self.Length))
         self.SampleNames.append(name)
         self.ContigSampleReadCounts.append(0)
         self.DRPs.append([])
         self.Ploidies.append(2)
     
-    def addSampleWithData(self,SampleName,SampleRDWindows,ContigSampleReadCount,SampleDRPs,Ploidy):
+    def addSampleWithData(self,SampleName,SampleRDWindows,SampleAverageClipLengths,ContigSampleReadCount,SampleDRPs,Ploidy):
         self.RDWindows.append(SampleRDWindows)
+        self.AverageClipLengths.append(SampleAverageClipLengths)
         self.SampleNames.append(SampleName)
         self.ContigSampleReadCounts.append(ContigSampleReadCount)
         self.DRPs.append(SampleDRPs)
@@ -47,6 +50,7 @@ class Contig:
     
     def clearMemory(self):
         self.RDWindows=None
+        self.AverageClipLengths=None
         self.MixedRDRs=None
         self.DRPs=None
         self.RDWindowsAcc=None

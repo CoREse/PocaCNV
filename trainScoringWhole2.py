@@ -19,6 +19,8 @@ H4=100
 H5=100
 HiddenLayersN=20
 
+LoadFromPath=False
+
 # 规定学习率
 learning_rate = 1e-3
 
@@ -30,7 +32,17 @@ Even=True
 ValidateTurn=200
 SaveAlong=True
 
+ValidateMinOnlyTurn=None
+ValidateMinOnlyLoss=0.1
+ValidateProtection=200
+IgnoreProtectionPortion=0.1
+
 ValidatePortion=0.05
+
+Epsilon=10e-10
+Target=0.2
+LossTarget=10e-10
+print("Target: ",Target)
 
 N=10000000
 D=0
@@ -43,7 +55,15 @@ Data1=[]
 CNPriors=[1.4818669642343562e-06, 0.0024241621501567266, 0.9914186177260093, 0.00550095102642564, 0.0006000125666241987, 4.0389660750366106e-05, 1.1302181811873978e-05, 2.3256457943417974e-06, 5.854614618138028e-07, 7.124415377290356e-08, 1.0010930675953374e-07, 3.210044872566197e-10, 3.565148390433508e-11, 2.993635914964604e-12, 7.20618688429682e-13, 1.3465236956844422e-13, 3.0109007332307176e-14, 3.4497272100312798e-15, 2.5051103812841497e-15]
 
 #SampleCount=int(sys.argv[1])
-for DataFileName in sys.argv[1:]:
+if sys.argv[1].upper()=="DEL":
+    Mode=0
+    SavePath=SavePath+".del"
+elif sys.argv[1].upper()=="DUP":
+    Mode=1
+    SavePath=SavePath+".dup"
+else:
+    print("Choose a mode! (DEL or DUP)",file=sys.stderr)
+for DataFileName in sys.argv[2:]:
     DataFile=open(DataFileName,"r")
     ChromNo=int(DataFileName.split("_")[1])
     for line in DataFile:
@@ -58,6 +78,12 @@ for DataFileName in sys.argv[1:]:
         MuS=int(sl[7])
         PassConfidence=float(sl[8])
         CN=float(sl[9])
+        if Mode==0:
+            if CN>2:
+                continue
+        else:
+            if CN<=2:
+                continue
         Confidence=float(sl[10])
         CScore=float(sl[11])
         HasSDRP=float(sl[12])
@@ -113,8 +139,21 @@ for i in range(len(ValidateData)):
     NPValidate[i]=ValidateData[i]
 TensorValidate=torch.from_numpy(NPValidate).to(device=device)
 
-Data=Data0[ValidateClass0Size:ValidateClass0Size+TrainClass0Size]+Data1[ValidateClass1Size:ValidateClass1Size+TrainClass1Size]
-np.random.shuffle(Data)
+#Data=Data0[ValidateClass0Size:ValidateClass0Size+TrainClass0Size]+Data1[ValidateClass1Size:ValidateClass1Size+TrainClass1Size]
+if len(Data0)>len(Data1):
+    MinorData=Data1
+    MajorData=Data0
+    MinorValidateSize=ValidateClass1Size
+    MajorValidateSize=ValidateClass0Size
+else:
+    MinorData=Data0
+    MajorData=Data1
+    MinorValidateSize=ValidateClass0Size
+    MajorValidateSize=ValidateClass1Size
+MinorDataSize=len(MinorData)-MinorValidateSize
+MajorDataSize=len(MajorData)-MajorValidateSize
+Data=MinorData[MinorValidateSize:]+MajorData[MajorValidateSize:]
+#np.random.shuffle(Data)
 
 NPData=np.ndarray((len(Data),d_in))
 NPLabels=np.ndarray((len(Data)))
@@ -122,18 +161,27 @@ for i in range(len(Data)):
     for j in range(d_in):
         NPData[i][j]=Data[i][j]
     NPLabels[i]=Data[i][-1]
-
+#NPData=NPData[:MinorDataSize*2]
 TensorData=torch.from_numpy(NPData).type(torch.FloatTensor).to(device=device)
+#for i in range(len(TensorData)):
+#    sum=0
+#    for j in range(len(TensorData[i])):
+#        sum+=TensorData[i][j]
+#    print(sum)
+#exit(0)
 TensorLabels=torch.from_numpy(NPLabels).type(torch.LongTensor).to(device=device)
+print(TensorData.shape)
+NPLabels=NPLabels[:MinorDataSize*2]
+TrainTensorLabels=torch.from_numpy(NPLabels).type(torch.LongTensor).to(device=device)
 
-train_set = torch.utils.data.TensorDataset(TensorData,TensorLabels)
+#train_set = torch.utils.data.TensorDataset(TensorData,TensorLabels)
 
-if BATCH_SIZE!=0:
-    train_loader = torch.utils.data.DataLoader(
-            dataset=train_set,
-            batch_size=BATCH_SIZE,
-            shuffle=True
-            )
+#if BATCH_SIZE!=0:
+#    train_loader = torch.utils.data.DataLoader(
+#            dataset=train_set,
+#            batch_size=BATCH_SIZE,
+#            shuffle=True
+#            )
 
 print("Label1:%s Label0:%s, Data:%s, BATCH_SIZE:%s"%(D1,D0,len(Data),BATCH_SIZE))
 #print(Data,Labels)
@@ -154,12 +202,6 @@ class TwoLayerNet(torch.nn.Module):
         y_pred = self.linear2(torch.relu(self.linear1(x)))
         return y_pred
 
-
-Epsilon=10e-10
-Target=0.2
-LossTarget=10e-10
-print("Target: ",Target)
-
 def CustomLoss(y_pred,y):
     loss=nn.CrossEntropyLoss(reduction='sum')(y_pred,y)
     return loss
@@ -167,35 +209,16 @@ def CustomLoss(y_pred,y):
     return loss
 
 def validate(model):
-    print("TrainingSet:")
-    Correct=0
-    Correct0=0
-    Correct1=0
-    Pred0=0
-    Pred1=0
-    if len(TensorData)<=MaxBlock:
-        y_preds=model(TensorData)
-        for i in range(TrainClass0Size+TrainClass1Size):
-            #y_pred=model(ValidateData[i][:-1])
-            y_pred=y_preds[i]
-            y_pred=0 if y_pred[0]>y_pred[1] else 1
-            #y_pred=1 if model(ValidateData[i][:-1])>0.5 else 0
-            if y_pred==0:
-                Pred0+=1
-            else:
-                Pred1+=1
-            if y_pred==TensorLabels[i]:
-                Correct+=1
-                if y_pred==1:
-                    Correct1+=1
-                else:
-                    Correct0+=1
-    else:
-        Start=0
-        while Start<len(TensorData):
-            #y_preds=torch.cat((y_preds,model(TensorData[Start:Start+MaxBlock])))
-            y_preds=model(TensorData[Start:Start+MaxBlock])
-            for i in range(len(y_preds)):
+    if False:
+        print("TrainingSet:")
+        Correct=0
+        Correct0=0
+        Correct1=0
+        Pred0=0
+        Pred1=0
+        if len(TensorData)<=MaxBlock:
+            y_preds=model(TensorData)
+            for i in range(TrainClass0Size+TrainClass1Size):
                 #y_pred=model(ValidateData[i][:-1])
                 y_pred=y_preds[i]
                 y_pred=0 if y_pred[0]>y_pred[1] else 1
@@ -204,29 +227,50 @@ def validate(model):
                     Pred0+=1
                 else:
                     Pred1+=1
-                if y_pred==TensorLabels[Start+i]:
+                if y_pred==TensorLabels[i]:
                     Correct+=1
                     if y_pred==1:
                         Correct1+=1
                     else:
                         Correct0+=1
-            Start+=MaxBlock
-    print(TrainClass0Size,TrainClass1Size,Correct,Correct0,Correct1)
-    CR=Correct/(TrainClass0Size+TrainClass1Size)
-    #PR0=Correct0/(Pred0) if Pred0!=0 else 0
-    #PR1=Correct1/(Pred1) if Pred1!=0 else 0
-    #Recall0=Correct0/TrainClass0Size if TrainClass0Size!=0 else 0
-    #Recall1=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
-    #F10=2*Recall0*PR0/(Recall0+PR0) if (Recall0+PR0)!=0 else 0
-    #F11=2*Recall1*PR1/(Recall1+PR1) if (Recall1+PR1)!=0 else 0
-    #FF=2*F10*F11/(F10+F11) if (F10+F11)!=0 else 0
-    PR=Correct1/Pred1 if Pred1!=0 else 0
-    Recall=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
-    F1=2*PR*Recall/(PR+Recall) if PR+Recall!=0 else 0
-    print("CR:%s, PR:%s, Recall:%s, F1:%s"%(CR,PR,Recall,F1))
+        else:
+            Start=0
+            while Start<len(TensorData):
+                #y_preds=torch.cat((y_preds,model(TensorData[Start:Start+MaxBlock])))
+                y_preds=model(TensorData[Start:Start+MaxBlock])
+                for i in range(len(y_preds)):
+                    #y_pred=model(ValidateData[i][:-1])
+                    y_pred=y_preds[i]
+                    y_pred=0 if y_pred[0]>y_pred[1] else 1
+                    #y_pred=1 if model(ValidateData[i][:-1])>0.5 else 0
+                    if y_pred==0:
+                        Pred0+=1
+                    else:
+                        Pred1+=1
+                    if y_pred==TensorLabels[Start+i]:
+                        Correct+=1
+                        if y_pred==1:
+                            Correct1+=1
+                        else:
+                            Correct0+=1
+                Start+=MaxBlock
+        print(TrainClass0Size,TrainClass1Size,Correct,Correct0,Correct1)
+        CR=Correct/(TrainClass0Size+TrainClass1Size)
+        #PR0=Correct0/(Pred0) if Pred0!=0 else 0
+        #PR1=Correct1/(Pred1) if Pred1!=0 else 0
+        #Recall0=Correct0/TrainClass0Size if TrainClass0Size!=0 else 0
+        #Recall1=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
+        #F10=2*Recall0*PR0/(Recall0+PR0) if (Recall0+PR0)!=0 else 0
+        #F11=2*Recall1*PR1/(Recall1+PR1) if (Recall1+PR1)!=0 else 0
+        #FF=2*F10*F11/(F10+F11) if (F10+F11)!=0 else 0
+        PR=Correct1/Pred1 if Pred1!=0 else 0
+        Recall=Correct1/TrainClass1Size if TrainClass1Size!=0 else 0
+        F1=2*PR*Recall/(PR+Recall) if PR+Recall!=0 else 0
+        print("CR:%s, PR:%s, Recall:%s, F1:%s"%(CR,PR,Recall,F1))
     #if PR>Target and Recall>Target:
     #    return True
     #print("CR:%s, PR0:%s, PR1:%s, Recall0:%s, Recall1:%s, F1_0:%s, F1_1:%s, FF:%s"%(CR,PR0,PR1,Recall0,Recall1,F10,F11,FF))
+    print("ValidateSet:")
     Correct=0
     Correct0=0
     Correct1=0
@@ -291,6 +335,7 @@ def validate(model):
     return False
 
 #import swats
+import random
 while 1:
     # 初始化model
     #model = TwoLayerNet(d_in, H, d_out)
@@ -315,7 +360,8 @@ while 1:
                                                 ,nn.ReLU(),nn.Linear(H,d_out))"""
     #model=torch.load("ScoringTrain/Model032/Model032.pickle")
     #model=torch.load("ScoringTrain/Model0179/Model0179.pickle")
-    #model=torch.load("data/ScoringTrainModelData")
+    if LoadFromPath:
+        model=torch.load("data/ScoringTrainModelData")
     model=model.to(device=device)
     #validate(model)
     #exit(0)
@@ -352,6 +398,11 @@ while 1:
     Changed2=True
     Changed3=True
 
+    LastTurnMinLoss=1
+    TurnMinLoss=1
+    MinLoss=1
+    VOActivate=False
+    LastValidate=-1
     for it in range(N):
         AveLoss=0
         if BATCH_SIZE!=0:
@@ -392,15 +443,44 @@ while 1:
                 #LastLoss=loss
                 #LastAveLoss=AveLoss
                 #AveLossList.append(AveLoss)
+        elif False:
+            Start=int(random.random()*MajorDataSize)+MinorDataSize
+            Tensors=[]
+            if Start==MajorDataSize+MinorDataSize:
+                Start=MinorDataSize
+            if Start+MinorDataSize>len(TensorData):
+                #NewTensor=torch.cat((TensorData[:MinorDataSize],TensorData[Start:],TensorData[MinorDataSize:MinorDataSize+Start+MinorDataSize-len(TensorData)]))
+                Tensors=[TensorData[:MinorDataSize],TensorData[Start:],TensorData[MinorDataSize:MinorDataSize+Start+MinorDataSize-len(TensorData)]]
+                LabelEnds=[0,MinorDataSize,MinorDataSize+len(TensorData)-Start,2*MinorDataSize]
+            else:
+                #NewTensor=torch.cat((TensorData[:MinorDataSize],TensorData[Start:Start+MinorDataSize]))
+                Tensors=[TensorData[:MinorDataSize],TensorData[Start:Start+MinorDataSize]]
+                LabelEnds=[0,MinorDataSize,2*MinorDataSize]
+            for i in range(len(Tensors)):
+                y_pred=model(Tensors[i])
+                loss=loss_fn(y_pred,TrainTensorLabels[LabelEnds[i]:LabelEnds[i+1]])
+                AveLoss+=float(loss)
+                optimizer.zero_grad()
+                loss.backward()
+                #print(loss)
+                optimizer.step()
         else:
-            y_pred=model(TensorData)
-            loss=loss_fn(y_pred,TensorLabels)
+            Start=int(random.random()*MajorDataSize)+MinorDataSize
+            Tensors=[]
+            if Start==MajorDataSize+MinorDataSize:
+                Start=MinorDataSize
+            if Start+MinorDataSize>len(TensorData):
+                NewTensor=torch.cat((TensorData[:MinorDataSize],TensorData[Start:],TensorData[MinorDataSize:MinorDataSize+Start+MinorDataSize-len(TensorData)]))
+            else:
+                NewTensor=torch.cat((TensorData[:MinorDataSize],TensorData[Start:Start+MinorDataSize]))
+            y_pred=model(NewTensor)
+            loss=loss_fn(y_pred,TrainTensorLabels)
             AveLoss+=float(loss)
             optimizer.zero_grad()
             loss.backward()
             #print(loss)
             optimizer.step()
-        AveLoss/=len(Data)
+        AveLoss/=2*MinorDataSize
         print(it,AveLoss)
         if not Changed and AveLoss<0.55:
             #optimizer=torch.optim.SGD(model.parameters(), lr=learning_rate,momentum=0.1)
@@ -420,15 +500,32 @@ while 1:
         if AveLoss<LossTarget:
             break
         LastAveLoss=AveLoss
-        if it%ValidateTurn==0:
+        if not VOActivate and (ValidateMinOnlyLoss!=None or ValidateMinOnlyTurn!=None):
+            if ValidateMinOnlyLoss!=None and AveLoss<ValidateMinOnlyLoss:
+                VOActivate=True
+            if ValidateMinOnlyTurn!=None and it>ValidateMinOnlyTurn:
+                VOActivate=True
+        if VOActivate and AveLoss<MinLoss:
+            if AveLoss<MinLoss*(1-IgnoreProtectionPortion) or it-LastValidate>ValidateProtection:
+                if validate(model):
+                    break
+                LastValidate=it
+        if AveLoss<MinLoss:
+            MinLoss=AveLoss
+        if AveLoss<TurnMinLoss:
+            TurnMinLoss=AveLoss
+        if not VOActivate and it%ValidateTurn==0:
+            LastTurnMinLoss=TurnMinLoss
+            TurnMinLoss=1
             if validate(model):
                 break
     if validate(model):
         break
     break
 
-print(model.state_dict())
+#print(model.state_dict())
 
 torch.save(model,SavePath)
+print("Model saved to ",SavePath)
 #plt.plot(range(200), loss_list)
 #plt.show()

@@ -51,6 +51,13 @@ def readSamAndSaveSD(thegenome, SamplePaths):
             print(gettime()+"A part of SAMFile(s) read and SDs made. "+getMemUsage(),file=sys.stderr)
     return RDFPaths
 
+def getClipLength(Cigar):
+    Length=0
+    for i in range(len(Cigar)):
+        if Cigar[i][0]==4 or Cigar[i][0]==5:
+            Length+=Cigar[i][1]
+    return Length
+
 def readSamToSD(thegenome, FilePath, ReferencePath, WindowSize):
     print(gettime()+"Reading reads from %s..."%(FilePath),file=sys.stderr)
     SamFile=pysam.AlignmentFile(FilePath,"rb",reference_filename=ReferencePath)
@@ -79,14 +86,24 @@ def readSamToSD(thegenome, FilePath, ReferencePath, WindowSize):
                         TheContig.DRPs[SampleIndex].append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start,0))
                     elif isize < g.MedianInsertionSize-3*g.ISSD:
                         TheContig.DRPs[SampleIndex].append(DRP(read.reference_start,read.reference_start+read.template_length,read.reference_end,read.next_reference_start,1))
+                    if g.AdaptiveIS:
+                        g.MedianInsertionSize=(g.MedianInsertionSize*g.AdaptiveCount+isize)/(g.AdaptiveCount+1)
+                        g.ISSD=(g.ISSD*g.AdaptiveCount+abs(isize-g.MedianInsertionSize))/(g.AdaptiveCount+1)
+                        g.AdaptiveCount+=1
                 TheContig.RDWindows[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=1
+                ClipLength=getClipLength(read.cigar)
+                TheContig.AverageClipLengths[SampleIndex][int((int((read.reference_start+read.reference_end)/2))/WindowSize)]+=ClipLength
                 TheContig.ContigSampleReadCounts[SampleIndex]+=1
                 #ReadCount+=1
     except Exception as e:
         print("WARN:[Sample:%s] %s"%(Name,e),file=sys.stderr)
         return False
     SamFile.close()
-    TheContig.DRPs[SampleIndex].sort(key=lambda d: d.Start)
+    for TheContig in thegenome.Contigs:
+        TheContig.DRPs[SampleIndex].sort(key=lambda d: d.Start)
+        for i in range(len(TheContig.AverageClipLengths[SampleIndex])):
+            if TheContig.RDWindows[SampleIndex][i]!=0:
+                TheContig.AverageClipLengths[SampleIndex][i]/=TheContig.RDWindows[SampleIndex][i]
     print(gettime()+"Sample %s read."%(Name),file=sys.stderr)
     print(gettime()+"Storing sd data for %s..."%(Name),file=sys.stderr)
     writeSampleSDData(thegenome,Name,SampleIndex,ReadCount,WindowSize,FilePath)
@@ -101,7 +118,7 @@ def writeSampleSDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize
     SampleData["RDWindowSize"]=WindowSize
     SampleData["Contigs"]=[]
     for c in mygenome.Contigs:
-        SampleData["Contigs"].append({"Name":c.Name,"Length":c.Length,"RDWindows":c.RDWindows[SampleI],"ContigSampleReadCounts":c.ContigSampleReadCounts[SampleI],"DRPs":c.DRPs[SampleI]})
+        SampleData["Contigs"].append({"Name":c.Name,"Length":c.Length,"RDWindows":c.RDWindows[SampleI],"AverageClipLengths":c.AverageClipLengths[SampleI],"ContigSampleReadCounts":c.ContigSampleReadCounts[SampleI],"DRPs":c.DRPs[SampleI]})
     pickle.dump(SampleData,sdfile)
     sdfile.close()
     return
@@ -122,6 +139,7 @@ def readSampleSDData(mygenome, FileName):
             continue
         TheContig=mygenome.get(c["Name"])
         TheContig.RDWindows[-1]=c["RDWindows"]
+        TheContig.AverageClipLengths[-1]=c["AverageClipLengths"]
         if TheContig.Length!=c["Length"]:
             print(gettime()+"WARN: contig %s length doesn't matchup."%c["Name"],file=sys.stderr)
         TheContig.DRPs[-1]=c["DRPs"]
@@ -157,10 +175,11 @@ def readSDDataAll(TheGenome, SampleNames, FileNames):
             for i in range(len(mygenome.Contigs)):
                 c=mygenome.Contigs[i]
                 SampleRDWindows=r.Contigs[i].RDWindows[0]
+                SampleAverageClipLengths=r.Contigs[i].AverageClipLengths[0]
                 ContigSampleReadCount=r.Contigs[i].ContigSampleReadCounts[0]
                 SampleDRPs=r.Contigs[i].DRPs[0]
                 Ploidy=r.Contigs[i].Ploidies[0]
-                c.addSampleWithData(SampleName,SampleRDWindows,ContigSampleReadCount,SampleDRPs,Ploidy)
+                c.addSampleWithData(SampleName,SampleRDWindows,SampleAverageClipLengths,ContigSampleReadCount,SampleDRPs,Ploidy)
             mygenome.SampleNames.append(SampleName)
             mygenome.SampleN+=1
 
