@@ -269,10 +269,19 @@ class VariantRecords:
                     elif RSamples[SN][i][1].Type.upper()=="DUP":
                         MatchedDup+=1
                         SelfMatchedDup+=len(RSamples[SN][i][0])
-        Out= "All: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDel: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)\nDup: Sensitivity: %s (%s/%s), PPV: %s (%s/%s)"%(\
-            Matched/OtherN if OtherN!=0 else 0,Matched,OtherN,SelfMatched/SelfN if SelfN!=0 else 0,SelfMatched,SelfN\
-                ,MatchedDel/OtherDelN if OtherDelN!=0 else 0,MatchedDel,OtherDelN,SelfMatchedDel/SelfDelN if SelfDelN!=0 else 0,SelfMatchedDel,SelfDelN\
-                    ,MatchedDup/OtherDupN if OtherDupN!=0 else 0,MatchedDup,OtherDupN,SelfMatchedDup/SelfDupN if SelfDupN!=0 else 0,SelfMatchedDup,SelfDupN
+        AS=Matched/OtherN if OtherN!=0 else 0
+        AP=SelfMatched/SelfN if SelfN!=0 else 0
+        AF1=2*(AS*AP)/(AS+AP)
+        DS=MatchedDel/OtherDelN if OtherDelN!=0 else 0
+        DP=SelfMatchedDel/SelfDelN if SelfDelN!=0 else 0
+        DF1=2*(DS*DP)/(DS+DP)
+        DuS=MatchedDup/OtherDupN if OtherDupN!=0 else 0
+        DuP=SelfMatchedDup/SelfDupN if SelfDupN!=0 else 0
+        DuF1=2*(DuS*DuP)/(DuS+DuP)
+        Out= "All: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s\nDel: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s\nDup: Sensitivity: %s (%s/%s), PPV: %s (%s/%s), F1: %s"%(\
+            AS,Matched,OtherN,AP,SelfMatched,SelfN,AF1\
+                ,DS,MatchedDel,OtherDelN,DP,SelfMatchedDel,SelfDelN,DF1\
+                    ,DuS,MatchedDup,OtherDupN,DuP,SelfMatchedDup,SelfDupN,DuF1
                 )#PPV:positive predictive value,1-FDR
         if PR:
             for SN in Other.Samples.keys():
