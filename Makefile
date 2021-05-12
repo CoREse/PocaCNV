@@ -62,6 +62,12 @@ test2122: build
 test22: build
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /data/0/cre/CHS/samples.txt data/test22.vcf
+testCDX22: build
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -C 22 > data/testCDX22.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /home/cre/data/CDX/samples.txt data/testCDX22.vcf
+testCDX10: build
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -C 10 > data/testCDX10.vcf
+	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 10 -SF /home/cre/data/CDX/samples.txt data/testCDX10.vcf
 test22light: build
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/HG0040*CHS*.cram.sd -C 22 > data/test22light.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test22light.vcf

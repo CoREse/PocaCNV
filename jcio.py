@@ -126,7 +126,11 @@ def writeSampleSDData(mygenome, SampleName, SampleI, SampleReadCount, WindowSize
 def readSampleSDData(mygenome, FileName):
     print(gettime()+"Reading reads from %s..."%(FileName),file=sys.stderr)
     SDFile=open(FileName,"rb")
-    SampleData=pickle.load(SDFile)
+    try:
+        SampleData=pickle.load(SDFile)
+    except Exception as e:
+        print("[ERROR]:%s, FileName:%s"%(e,FileName),file=sys.stderr)
+        raise(e)
     SDFile.close()
 
     SampleName=SampleData["SampleName"]

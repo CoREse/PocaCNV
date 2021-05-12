@@ -55,6 +55,7 @@ Data1=[]
 CNPriors=[1.4818669642343562e-06, 0.0024241621501567266, 0.9914186177260093, 0.00550095102642564, 0.0006000125666241987, 4.0389660750366106e-05, 1.1302181811873978e-05, 2.3256457943417974e-06, 5.854614618138028e-07, 7.124415377290356e-08, 1.0010930675953374e-07, 3.210044872566197e-10, 3.565148390433508e-11, 2.993635914964604e-12, 7.20618688429682e-13, 1.3465236956844422e-13, 3.0109007332307176e-14, 3.4497272100312798e-15, 2.5051103812841497e-15]
 
 #SampleCount=int(sys.argv[1])
+DataStart=2
 if sys.argv[1].upper()=="DEL":
     Mode=0
     SavePath=SavePath+".del"
@@ -62,8 +63,8 @@ elif sys.argv[1].upper()=="DUP":
     Mode=1
     SavePath=SavePath+".dup"
 else:
-    print("Choose a mode! (DEL or DUP)",file=sys.stderr)
-for DataFileName in sys.argv[2:]:
+    DataStart=1
+for DataFileName in sys.argv[DataStart:]:
     DataFile=open(DataFileName,"r")
     ChromNo=int(DataFileName.split("_")[1])
     for line in DataFile:
@@ -78,12 +79,6 @@ for DataFileName in sys.argv[2:]:
         MuS=int(sl[7])
         PassConfidence=float(sl[8])
         CN=float(sl[9])
-        if Mode==0:
-            if CN>2:
-                continue
-        else:
-            if CN<=2:
-                continue
         Confidence=float(sl[10])
         CScore=float(sl[11])
         HasSDRP=float(sl[12])
@@ -91,6 +86,13 @@ for DataFileName in sys.argv[2:]:
         SDRPRatio=float(sl[14])
         ACL=float(sl[15])
         Ploidy=float(sl[16])
+        if DataStart!=1:
+            if Mode==0:
+                if CN>Ploidy:
+                    continue
+            else:
+                if CN<=Ploidy:
+                    continue
         Label=int(sl[17])
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo]+CNPriors+[Label]
         #DataItem=[SegNum,ContigLength,SiblingCount,Start,End,Mu,MuS,PassConfidence,CN,Confidence,CScore,ChromNo,CNPriors[int(CN) if int(CN)<len(CNPriors) else -1],Label]

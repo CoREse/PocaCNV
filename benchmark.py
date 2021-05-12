@@ -36,7 +36,10 @@ if len(sys.argv)>1:
             Format=sys.argv[i+1]
             i+=1
         elif a=='-C':
-            Contigs=[sys.argv[i+1]]
+            if Contigs==None:
+                Contigs=[sys.argv[i+1]]
+            else:
+                Contigs.append(sys.argv[i+1])
             i+=1
         elif a=='-S':
             Samples=[sys.argv[i+1]]
@@ -82,6 +85,9 @@ if PrintSample!=None:
     exit(0)
 Test=VariantRecords("Test")
 for i in range(len(MyF)):
-    Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength,MaxAF,MinScore)
+    try:
+        Test.parseVcfCNV(MyF[i],Contigs,Samples,MinLength,1,MinScore)
+    except Exception as e:
+        print(e,file=sys.stderr)
 
 print(Test.interpret(Test.matchAll(Gold,Percentage),PrintResult))
