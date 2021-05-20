@@ -27,6 +27,7 @@ GenomeLength=None
 MyGenome=None
 RParallel=False
 SampleNameIndexes={}
+MidDataType="HDF5"
 class Parameters:
     ScoreThreshold=0#.99
     SampleConfidenceThreshold=0#.7

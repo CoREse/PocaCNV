@@ -43,6 +43,11 @@ if __name__ == "__main__":
     g.ThreadNR=None
 
     g.VcfHeaderContigs=None#if print header, should have all contigs tunples[(Name,Length)] if is the first contig
+
+    readMidDataAll=readHDF5DataAll
+    if g.MidDataType=="SD":
+        readMidDataAll=readSDDataAll
+
     def usage():
         print("""python3 jcrd [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
     Arguments:
@@ -150,6 +155,11 @@ if __name__ == "__main__":
         for p in SDPaths:
             print(p)
         exit(0)
+    
+    TransSDToHDF5=False
+    if TransSDToHDF5:
+        readSDDataToHDF5All(SDPaths)
+        exit(0)
 
     for ci in range(len(mygenome.Contigs)):
         print(gettime()+"Starting call for contig %s..."%(mygenome.Contigs[ci].Name),file=sys.stderr)
@@ -173,7 +183,7 @@ if __name__ == "__main__":
             #RDFPaths=readRDDataAndSaveRDF(mygenome,g.SamplePaths)#return RDF SamplePaths
             if g.WriteRDDataOnly:
                 exit(0)
-            readSDDataAll(ContigGenome, SampleNames,SDPaths)
+            readMidDataAll(ContigGenome, SampleNames,SDPaths)
             ContigGenome.calcContigReadCounts()
             #print(ReadCount,PairCount,LCount,RCount,UnmappedCount,file=sys.stderr)
             #exit(0)

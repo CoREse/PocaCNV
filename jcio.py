@@ -3,6 +3,8 @@ from rdread import *
 import pysam
 import pickle
 from DRP import *
+import h5py
+import array
 
 def readSamAndSaveSD(thegenome, SamplePaths):
     RDFPaths=SamplePaths.copy()
@@ -11,7 +13,7 @@ def readSamAndSaveSD(thegenome, SamplePaths):
     for i in range(len(SamplePaths)):
         #print(gettime()+"Reading %s..."%(g.SamplePaths[i]),file=sys.stderr)
         RtS.append(-1)
-        if SamplePaths[i].split(".")[-1]=="sd":
+        if SamplePaths[i].split(".")[-1]=="sd" or SamplePaths[i].split(".")[-1]=="hdf5":
             continue
         else:
             RDFPaths[i]=getSDPath(SamplePaths[i])
@@ -152,7 +154,7 @@ def readSampleSDData(mygenome, FileName):
 
 def readSDDataAll(TheGenome, SampleNames, FileNames):
     mygenome=TheGenome
-    if g.ThreadN==1:
+    if g.ThreadNR==1:
         for i in range(len(FileNames)):
             Result=readSampleSDData(mygenome,FileNames[i])
             g.SampleReadCount.append(Result[1])
@@ -161,7 +163,7 @@ def readSDDataAll(TheGenome, SampleNames, FileNames):
         print(gettime()+"SDs read. "+getMemUsage(),file=sys.stderr)
     else:
         ctx=mp.get_context("fork")
-        pool=ctx.Pool(g.ThreadN)
+        pool=ctx.Pool(g.ThreadNR)
         args=[]
         for i in range(len(FileNames)):
             args.append((mygenome.genVacant(),FileNames[i]))
@@ -186,6 +188,110 @@ def readSDDataAll(TheGenome, SampleNames, FileNames):
                 c.addSampleWithData(SampleName,SampleRDWindows,SampleAverageClipLengths,ContigSampleReadCount,SampleDRPs,Ploidy)
             mygenome.SampleNames.append(SampleName)
             mygenome.SampleN+=1
+
+def readSampleHDF5Data(mygenome, FileName):
+    print(gettime()+"Reading reads from %s..."%(FileName),file=sys.stderr)
+    try:
+        HDF5File=h5py.File(FileName,"r")
+    except Exception as e:
+        print("[ERROR]:%s, FileName:%s"%(e,FileName),file=sys.stderr)
+        raise(e)
+    
+    SampleName=HDF5File.attrs["SampleName"]
+    SampleReadCount=HDF5File.attrs["SampleReadCount"]
+    mygenome.addSample(SampleName)
+    if g.RDWindowSize!=HDF5File.attrs["RDWindowSize"]:
+        print(gettime()+"Wrong RDWindowSize of Sample HDF5 file %s, quitting..."%FileName,file=sys.stderr)
+        exit(0)
+    for c in HDF5File.keys():
+        if not mygenome.hasContig(c):
+            continue
+        TheContig=mygenome.get(c)
+        ContigG=HDF5File[c]
+        TheContig.RDWindows[-1]=array.array("f",ContigG["RDWindows"][...])
+        TheContig.AverageClipLengths[-1]=array.array("f",ContigG["AverageClipLengths"][...])
+        if TheContig.Length!=ContigG.attrs["Length"]:
+            print(gettime()+"WARN: contig %s length doesn't matchup."%c,file=sys.stderr)
+        DRPTs=ContigG["DRPs"][...]
+        DRPs=[0]*len(DRPTs)
+        for i in range(len(DRPTs)):
+            D=DRPTs[i]
+            DRPs[i]=DRP(D[0],D[1],D[2],D[3],D[4])
+        TheContig.DRPs[-1]=DRPs
+        TheContig.ContigSampleReadCounts[-1]=ContigG.attrs["ContigSampleReadCounts"]
+    HDF5File.close()
+    return (SampleName,SampleReadCount,mygenome)
+
+def readHDF5DataAll(TheGenome, SampleNames, FileNames):
+    mygenome=TheGenome
+    if True or g.ThreadNR==1:
+        for i in range(len(FileNames)):
+            Result=readSampleHDF5Data(mygenome,FileNames[i])
+            g.SampleReadCount.append(Result[1])
+            SampleNames.append(Result[0])
+            g.SampleNameIndexes[Result[0]]=i
+        print(gettime()+"SDs read. "+getMemUsage(),file=sys.stderr)
+    else:
+        ctx=mp.get_context("fork")
+        pool=ctx.Pool(g.ThreadNR)
+        args=[]
+        for i in range(len(FileNames)):
+            args.append((mygenome.genVacant(),FileNames[i]))
+        addPool(pool)
+        Results=pool.starmap(readSampleHDF5Data,args)
+        delPool()
+        pool.terminate()
+        for j in range(len(Results)):
+            r=Results[j]
+            SampleName=r[0]
+            g.SampleReadCount.append(r[1])
+            SampleNames.append(SampleName)
+            g.SampleNameIndexes[SampleName]=j
+            r=r[2]
+            for i in range(len(mygenome.Contigs)):
+                c=mygenome.Contigs[i]
+                SampleRDWindows=r.Contigs[i].RDWindows[0]
+                SampleAverageClipLengths=r.Contigs[i].AverageClipLengths[0]
+                ContigSampleReadCount=r.Contigs[i].ContigSampleReadCounts[0]
+                SampleDRPs=r.Contigs[i].DRPs[0]
+                Ploidy=r.Contigs[i].Ploidies[0]
+                c.addSampleWithData(SampleName,SampleRDWindows,SampleAverageClipLengths,ContigSampleReadCount,SampleDRPs,Ploidy)
+            mygenome.SampleNames.append(SampleName)
+            mygenome.SampleN+=1
+
+def readSampleSDDataToHDF5(FileName):
+    print(gettime()+"Reading reads from %s..."%(FileName),file=sys.stderr)
+    SDFile=open(FileName,"rb")
+    try:
+        SampleData=pickle.load(SDFile)
+    except Exception as e:
+        print("[ERROR]:%s, FileName:%s"%(e,FileName),file=sys.stderr)
+        raise(e)
+    SDFile.close()
+
+    HD5FileName=FileName+".hdf5" if FileName[-3:]!=".sd" else FileName[:-3]+".hdf5"
+    HD5File=h5py.File(HD5FileName,'w')
+
+    HD5File.attrs["SampleName"]=SampleData["SampleName"]
+    HD5File.attrs["SampleReadCount"]=SampleData["SampleReadCount"]
+    HD5File.attrs["RDWindowSize"]=SampleData["RDWindowSize"]
+    for c in SampleData["Contigs"]:
+        ContigG=HD5File.create_group(c["Name"])
+        ContigG.attrs["Length"]=c["Length"]
+        ContigG.attrs["ContigSampleReadCounts"]=c["ContigSampleReadCounts"]
+        ContigG["RDWindows"]=c["RDWindows"]
+        ContigG["AverageClipLengths"]=c["AverageClipLengths"]
+        DRPs=[]
+        for D in c["DRPs"]:
+            DRPs.append((D.Start,D.End,D.InnerStart,D.InnerEnd,D.SupportedVariantType))
+        ContigG["DRPs"]=DRPs
+
+    HD5File.close()
+
+def readSDDataToHDF5All(FileNames):
+    for i in range(len(FileNames)):
+        Result=readSampleSDDataToHDF5(FileNames[i])
+    print(gettime()+"SDs read and HDF5s made. "+getMemUsage(),file=sys.stderr)
 
 def readSamToRDF(thegenome,FilePath,ReferencePath,WindowSize):
     print(gettime()+"Reading reads from %s..."%(FilePath),file=sys.stderr)
