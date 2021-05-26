@@ -19,8 +19,8 @@ all: build
 CGetRDScores.so: getRDScores.cpp
 	$(CC) $^ -o $@ -O3 -fPIC -fopenmp -lgsl -lgslcblas -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
 
-jcinput: jcinput.cpp
-	$(CC) $^ -o $@ -g -Lhtslib -lhts -pg
+jcinputraw: jcinput.cpp
+	$(CC) $^ -o $@ -g -pg -Lhdf5/lib -lhdf5 -Lhtslib -lhts -lz
 
 $(DNASEQ):$(DNASEQ_OBJS)
 	$(AR) -rc $@ $(DNASEQ_OBJS)
@@ -33,7 +33,7 @@ otest: $(PROJECT_OBJS) $(HTSLIB)
 
 cython: rdprocessing.pyx
 	python3 cythonsetup.py build_ext --inplace
-build: cython CGetRDScores.so jcinput
+build: cython CGetRDScores.so jcinputraw
 
 test:
 	python3 test.py

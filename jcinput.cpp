@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include "hdf5-1.12.0/src/hdf5.h"
 
 using namespace std;
 
@@ -63,6 +64,7 @@ struct Contig
 	{
 		RDWindows=(float*) malloc(sizeof(float)*Size);
 		AverageClipLengths=(float*) malloc(sizeof(float)*Size);
+		init();
 	}
 	~Contig()
 	{
@@ -125,6 +127,110 @@ float getClipLength(bam1_t * br)
 	return ClipLength;
 }
 
+void saveHDF5(const char * FileName, const char * SampleName, const Contig * Contigs, int NSeq ,int ReadCount, int RDWindowSize)
+{
+	hid_t       file_id, group_id;  // identifiers
+	hid_t       aid, atype, attr;
+	herr_t      status;
+
+	
+	aid = H5Screate(H5S_SCALAR);
+	atype = H5Tcopy (H5T_C_S1);
+	//status = H5Tset_cset(atype,H5T_CSET_UTF8);
+	status = H5Tset_size (atype, strlen(SampleName)+1);
+
+	// Create a new file using default properties. 
+	file_id = H5Fcreate(FileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	group_id = H5Gopen (file_id, "/", H5P_DEFAULT);
+	attr = H5Acreate (group_id, "SampleName", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, atype, SampleName);
+	status = H5Aclose (attr);
+	
+	atype = H5Tcopy (H5T_NATIVE_INT32);
+	attr = H5Acreate (group_id, "SampleReadCount", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, atype, &ReadCount);
+	status = H5Aclose (attr);
+
+	atype = H5Tcopy (H5T_NATIVE_INT32);
+	attr = H5Acreate (group_id, "RDWindowSize", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, atype, &RDWindowSize);
+	status = H5Aclose (attr);
+
+
+	status = H5Gclose(group_id);
+	status = H5Sclose (aid);
+
+	for (int i=0;i<NSeq;++i)
+	{
+		group_id = H5Gcreate (file_id,Contigs[i].Name.c_str(),H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+		
+		hsize_t dim[1];
+		dim[0]=Contigs[i].Size;
+		aid = H5Screate_simple(1,dim,NULL);
+		atype = H5Tcopy (H5T_IEEE_F32BE);
+
+		attr = H5Dcreate (group_id, "RDWindows", atype, aid, H5P_DEFAULT, H5P_DEFAULT,H5P_DEFAULT);
+		status = H5Dwrite (attr, H5T_NATIVE_FLOAT, H5S_ALL,H5S_ALL,H5P_DEFAULT, Contigs[i].RDWindows);
+
+		status = H5Sclose (aid);
+		status = H5Dclose (attr);
+
+		aid = H5Screate_simple(1,dim,NULL);
+		atype = H5Tcopy (H5T_IEEE_F32BE);
+
+		attr = H5Dcreate (group_id, "AverageClipLengths", atype, aid, H5P_DEFAULT, H5P_DEFAULT,H5P_DEFAULT);
+		status = H5Dwrite (attr, H5T_NATIVE_FLOAT, H5S_ALL,H5S_ALL,H5P_DEFAULT, Contigs[i].AverageClipLengths);
+
+		status = H5Sclose (aid);
+		status = H5Dclose (attr);
+
+		hsize_t dim2[2];
+		dim2[0]=Contigs[i].DRPs.size();
+		dim2[1]=5;
+
+		int data[dim2[0]][dim2[1]];
+		_List_const_iterator<DRP> it=Contigs[i].DRPs.begin();
+		for (int j=0;j<Contigs[i].DRPs.size();++j)
+		{
+			data[j][0]=it->Start;
+			data[j][1]=it->End;
+			data[j][2]=it->InnerStart;
+			data[j][3]=it->InnerEnd;
+			data[j][4]=it->SVT;
+			it=next(it);
+		}
+
+		aid = H5Screate_simple(2,dim2,NULL);
+		atype = H5Tcopy (H5T_NATIVE_INT32);
+
+		attr = H5Dcreate (group_id, "DRPs", atype, aid, H5P_DEFAULT, H5P_DEFAULT,H5P_DEFAULT);
+		status = H5Dwrite (attr, atype, H5S_ALL,H5S_ALL,H5P_DEFAULT, data);
+
+		status = H5Sclose (aid);
+		status = H5Dclose (attr);
+
+		aid = H5Screate(H5S_SCALAR);
+		atype = H5Tcopy (H5T_NATIVE_INT32);
+
+		attr = H5Acreate (group_id, "ContigSampleReadCounts", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+		status = H5Awrite (attr, atype, &(Contigs[i].ContigReadCount));
+		status = H5Aclose (attr);
+
+		atype = H5Tcopy (H5T_NATIVE_INT32);
+
+		attr = H5Acreate (group_id, "Length", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+		status = H5Awrite (attr, atype, &(Contigs[i].Size));
+		status = H5Aclose (attr);
+
+		status = H5Sclose (aid);
+
+		status = H5Gclose(group_id);
+	}
+		
+	// Close the file. 
+	status = H5Fclose(file_id);
+}
+
 int MedianInsertionSize=550;
 int ISSD=150;
 int RDWindowSize=100;
@@ -133,6 +239,9 @@ int main(int argc, char* argv[])
 {
     char * referenceFilename=argv[1];
     char * filename=argv[2];
+	char HDF5FileName[strlen(filename)+10];
+	strcpy(HDF5FileName,filename);
+	strcat(HDF5FileName,".hdf5");
 	int NSeq;
 	Contig * Contigs=getContigs(referenceFilename,&NSeq,RDWindowSize);
     Bam_file *bf=new Bam_file;
@@ -147,6 +256,23 @@ int main(int argc, char* argv[])
 		int ret = hts_set_fai_filename(bf->_hfp, referenceFilenameIndex);
 	}
 	bf->_hdr = sam_hdr_read(bf->_hfp);
+	char SampleName[1024];
+	kstring_t ks=KS_INITIALIZE;
+	ks_resize(&ks,1000);
+	sam_hdr_find_line_pos(bf->_hdr,"RG",0,&ks);
+	int splitn;
+	int * splitoffsets=ksplit(&ks,'\t',&splitn);
+	for (int i=0;i<splitn;++i)
+	{
+		if (memcmp(ks.s+splitoffsets[i],"SM",2)==0)
+		{
+			int End=ks_len(&ks);
+			if (i<splitn-1) End=splitoffsets[i+1];
+			memcpy(SampleName,ks.s+splitoffsets[i]+3,End-splitoffsets[i]-3);
+			SampleName[End-splitoffsets[i]-3]='\0';
+		}
+	}
+	ks_free(&ks);
 	int CordinTrans[bf->_hdr->n_targets];
 	for (int i=0;i<bf->_hdr->n_targets;++i)
 	{
@@ -198,24 +324,16 @@ int main(int argc, char* argv[])
 	}
     bam_file_close(bf);
 
-	FILE * rdf=fopen("data/jcinput.rd.txt","w");
-	FILE * avf=fopen("data/jcinput.av.txt","w");
-	FILE * drf=fopen("data/jcinput.dr.txt","w");
 	for (int i=0;i<NSeq;++i)
 	{
 		Contigs[i].DRPs.sort(compareDRP);
-		for (auto j=Contigs[i].DRPs.begin();j!=Contigs[i].DRPs.end();++j) fprintf(drf,"%d %d %d %d %d\n",j->Start,j->End,j->InnerStart,j->InnerEnd,j->SVT);
 		for (int j=0;j<Contigs[i].Size;++j)
 		{
 			if (Contigs[i].RDWindows[j]!=0) Contigs[i].AverageClipLengths[j]/=Contigs[i].RDWindows[j];
-			fprintf(rdf,"%.6f\n",Contigs[i].RDWindows[j]);
-			fprintf(avf,"%.6f\n",Contigs[i].AverageClipLengths[j]);
 		}
-		break;
 	}
-	fclose(rdf);
-	fclose(avf);
-	fclose(drf);
+
+	saveHDF5(HDF5FileName, SampleName, Contigs, NSeq, ReadCount,RDWindowSize);
 
 	for (int i=0;i<NSeq;++i)
 	{
