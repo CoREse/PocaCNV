@@ -10,6 +10,7 @@
 #include <mutex>
 #include <unistd.h>
 #include <omp.h>
+#include "htslib/htslib/bgzf.h"
 
 using namespace std;
 
@@ -391,7 +392,7 @@ void readBamToBrBlock(htsFile * SamFile,bam_hdr_t *Header, BrBlock** Top)
 	TheBlock->Next->Over=true;
 }
 
-void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName)
+void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, bool UseStdin=false)
 {
 	fprintf(stderr,"Reading %s...\n",SampleFileName);
 	char HDF5FileName[strlen(SampleFileName)+10];
@@ -446,9 +447,36 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 
     bam1_t *br=bam_init1();
 	int ReadCount=0, UnmappedCount=0;
-	while(sam_read1(SamFile, Header, br) >=0)//read record
+	int LineCount=0;
+	if (UseStdin)
 	{
-		handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
+		size_t linebuffersize=1024*0124;
+		char * linebuffer=(char*) malloc(linebuffersize);
+		//freopen(NULL,"rb",stdin);
+		//BGZF *In=bgzf_dopen(fileno(stdin),"r");
+		//if (In==0)
+		//{
+		//	fprintf(stderr,"Get pipe failed!");
+		//	return;
+		//}
+		//while (bam_read1(In,br)>=0)
+		int length=getline(&linebuffer,&linebuffersize,stdin);
+		while (length>=0)
+		{
+			kstring_t ks={length,linebuffersize,linebuffer};
+			sam_parse1(&ks,Header,br);
+			handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
+			length=getline(&linebuffer,&linebuffersize,stdin);
+			++LineCount;
+		}
+		free(linebuffer);
+	}
+	else
+	{
+		while(sam_read1(SamFile, Header, br) >=0)//read record
+		{
+			handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
+		}
 	}
 	/*
 	BrBlock * Top[1];
@@ -482,11 +510,11 @@ int main(int argc, char* argv[])
     char * ReferenceFilename=argv[1];
 	int NSeq;
 	Contig * Contigs=getContigs(ReferenceFilename,&NSeq,RDWindowSize);
-    omp_set_num_threads(2);
-    #pragma omp parallel for
+    //omp_set_num_threads(2);
+    //#pragma omp parallel for
 	for (int i=2;i<argc;++i)
 	{
-		readSam(Contigs,NSeq,ReferenceFilename,argv[i]);
+		readSam(Contigs,NSeq,ReferenceFilename,argv[i],1);
 	}
 	
 	free(Contigs);
