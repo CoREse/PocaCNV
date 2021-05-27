@@ -7,8 +7,13 @@
 #include <vector>
 #include <string>
 #include "hdf5-1.12.0/src/hdf5.h"
+#include <mutex>
+#include <unistd.h>
+#include <omp.h>
 
 using namespace std;
+
+mutex TopLock, WriteLock;
 
 typedef struct Bam_file{
 	bool _is_record_set;//set to 1 when _brec has data
@@ -105,6 +110,16 @@ Contig * getContigs(const char * ReferenceFN, int * NSeq, int WindowSize=100)
 	return Contigs;
 }
 
+inline Contig * genCopyOfContigs(const Contig * ContigModels, const int NSeq)
+{
+	Contig * Contigs=(Contig*) malloc(sizeof(Contig)*(NSeq));
+	for (int i=0;i<NSeq;++i)
+	{
+		new (Contigs+i) Contig(ContigModels[i].Size,ContigModels[i].Name.c_str());
+	}
+	return Contigs;
+}
+
 bool compareDRP(const DRP& a, const DRP& b)
 {
 	return a.Start<b.Start;
@@ -188,15 +203,21 @@ void saveHDF5(const char * FileName, const char * SampleName, const Contig * Con
 		dim2[0]=Contigs[i].DRPs.size();
 		dim2[1]=5;
 
-		int data[dim2[0]][dim2[1]];
+		//int **data=(int**)malloc(dim2[0]*sizeof(int*));
+		//for (int j=0;j<dim2[0];++j) data[j]=(int*)malloc(dim2[1]*sizeof(int));
+		//int data[dim2[0]][dim2[1]];
+		//int *[5]data=(int *[5])malloc(sizeof(int)*dim2[0]*dim2[1]);
+		DRP* data=(DRP *)malloc(sizeof(DRP)*dim2[0]);
 		_List_const_iterator<DRP> it=Contigs[i].DRPs.begin();
 		for (int j=0;j<Contigs[i].DRPs.size();++j)
 		{
+			data[j]=*it;
+			/*
 			data[j][0]=it->Start;
 			data[j][1]=it->End;
 			data[j][2]=it->InnerStart;
 			data[j][3]=it->InnerEnd;
-			data[j][4]=it->SVT;
+			data[j][4]=it->SVT;*/
 			it=next(it);
 		}
 
@@ -225,74 +246,48 @@ void saveHDF5(const char * FileName, const char * SampleName, const Contig * Con
 		status = H5Sclose (aid);
 
 		status = H5Gclose(group_id);
+		//for (int j=0;j<dim2[0];++j) free(data[j]);
+		free(data);
 	}
 		
 	// Close the file. 
 	status = H5Fclose(file_id);
 }
 
+struct BrBlock
+{
+	bam1_t * Block;
+	int Size;
+	int Count;
+	bool Mature;
+	bool Over;//read function will create a Over==true block as a last sentinel
+	BrBlock* Next;
+	BrBlock(int Size=10000)
+	:Size(Size),Count(0),Over(false),Next(NULL),Mature(false)
+	{
+		if (Size!=0) Block=(bam1_t*)calloc(Size,sizeof(bam1_t));
+	}
+	~BrBlock()
+	{
+		freeBlock();
+	}
+	void freeBlock()
+	{
+		if (Block!=NULL) free(Block);
+		Block=NULL;
+	}
+	private:
+	//prohibit copy
+	BrBlock(const BrBlock&);
+	BrBlock& operator=(const BrBlock&);
+};
+
 int MedianInsertionSize=550;
 int ISSD=150;
 int RDWindowSize=100;
 
-int main(int argc, char* argv[])
+void handlebr(bam1_t *br, Contig * Contigs, int * CordinTrans, int& ReadCount, int & UnmappedCount)
 {
-    char * referenceFilename=argv[1];
-    char * filename=argv[2];
-	char HDF5FileName[strlen(filename)+10];
-	strcpy(HDF5FileName,filename);
-	strcat(HDF5FileName,".hdf5");
-	int NSeq;
-	Contig * Contigs=getContigs(referenceFilename,&NSeq,RDWindowSize);
-    Bam_file *bf=new Bam_file;
-    bf->_hfp = hts_open(filename, "rb");
-
-	//set reference file
-	if (NULL != referenceFilename)
-	{
-		char referenceFilenameIndex[128];
-		strcpy(referenceFilenameIndex, referenceFilename);
-		strcat(referenceFilenameIndex, ".fai");
-		int ret = hts_set_fai_filename(bf->_hfp, referenceFilenameIndex);
-	}
-	bf->_hdr = sam_hdr_read(bf->_hfp);
-	char SampleName[1024];
-	kstring_t ks=KS_INITIALIZE;
-	ks_resize(&ks,1000);
-	sam_hdr_find_line_pos(bf->_hdr,"RG",0,&ks);
-	int splitn;
-	int * splitoffsets=ksplit(&ks,'\t',&splitn);
-	for (int i=0;i<splitn;++i)
-	{
-		if (memcmp(ks.s+splitoffsets[i],"SM",2)==0)
-		{
-			int End=ks_len(&ks);
-			if (i<splitn-1) End=splitoffsets[i+1];
-			memcpy(SampleName,ks.s+splitoffsets[i]+3,End-splitoffsets[i]-3);
-			SampleName[End-splitoffsets[i]-3]='\0';
-		}
-	}
-	ks_free(&ks);
-	int CordinTrans[bf->_hdr->n_targets];
-	for (int i=0;i<bf->_hdr->n_targets;++i)
-	{
-		bool NoFound=true;
-		for (int j=0;j<NSeq;++j)
-		{
-			if (strcmp(Contigs[j].Name.c_str(),bf->_hdr->target_name[i])==0)
-			{
-				CordinTrans[i]=j;
-				NoFound=false;
-				break;
-			}
-		}
-		if (NoFound) fprintf(stderr,"[WARN] There's no contig in reference named %s.\n",bf->_hdr->target_name[i]);
-	}
-
-    bam1_t *br=bam_init1();
-	int ReadCount=0, UnmappedCount=0;
-	while(sam_read1(bf->_hfp, bf->_hdr, br) >=0)//read record
-	{
 		++ReadCount;
 		if (read_is_unmapped(br))
 		{
@@ -308,21 +303,159 @@ int main(int argc, char* argv[])
         		int isize=abs(br->core.isize);
 				if (isize> MedianInsertionSize+3*ISSD)
 				{
+					WriteLock.lock();
 					TheContig.DRPs.push_back(DRP(br->core.pos,br->core.pos+br->core.isize,End,br->core.mpos,0));
+					WriteLock.unlock();
 				}
 				else if (isize< MedianInsertionSize-3*ISSD)
 				{
+					WriteLock.lock();
 					TheContig.DRPs.push_back(DRP(br->core.pos,br->core.pos+br->core.isize,End,br->core.mpos,1));
+					WriteLock.unlock();
 				}
 			}
 			int Index=(br->core.pos+End)/2/RDWindowSize;
-			++TheContig.RDWindows[Index];
 			float ClipLength=getClipLength(br);
+			//WriteLock.lock();
+			++TheContig.RDWindows[Index];
 			TheContig.AverageClipLengths[Index]+=ClipLength;
 			++TheContig.ContigReadCount;
+			//WriteLock.unlock();
+		}
+}
+
+void handleBrBlock(BrBlock * TheBlock, Contig * Contigs, int * CordinTrans, int& ReadCount, int & UnmappedCount)
+{
+	int BlockReadCount=0, BlockUnmappedCount=0;
+	int BrReadCount=0,BrUnmappedCount=0;
+	for (int i=0;i<TheBlock->Count;++i)
+	{
+		BrReadCount=0;
+		BrUnmappedCount=0;
+		handlebr(TheBlock->Block+i,Contigs,CordinTrans,BrReadCount,BrUnmappedCount);
+		BlockReadCount+=BrReadCount;
+		BlockUnmappedCount+=BrUnmappedCount;
+	}
+	WriteLock.lock();
+	ReadCount+=BlockReadCount;
+	UnmappedCount+=BlockUnmappedCount;
+	WriteLock.unlock();
+}
+
+void getBlockAndProcess(BrBlock ** UpMostBlock, Contig * Contigs, int * CordinTrans, int& ReadCount, int & UnmappedCount)
+{
+	while (true)
+	{
+		if ((*UpMostBlock)->Over) break;
+		TopLock.lock();
+		if (*UpMostBlock==NULL || !((*UpMostBlock)->Mature))
+		{
+			TopLock.unlock();
+			sleep(1);
+		}
+		else
+		{
+			BrBlock * TheBlock=*UpMostBlock;
+			if (TheBlock->Over)
+			{
+				TopLock.unlock();
+				break;
+			}
+			else *UpMostBlock=(*UpMostBlock)->Next;
+			TopLock.unlock();
+			handleBrBlock(TheBlock,Contigs,CordinTrans,ReadCount,UnmappedCount);
+			delete TheBlock;
 		}
 	}
-    bam_file_close(bf);
+}
+
+void readBamToBrBlock(htsFile * SamFile,bam_hdr_t *Header, BrBlock** Top)
+{
+	BrBlock * TheBlock=new BrBlock();
+	TheBlock->Next=new BrBlock();
+	while (sam_read1(SamFile, Header, TheBlock->Block+TheBlock->Count) >=0)
+	{
+		++TheBlock->Count;
+		if (TheBlock->Count>=TheBlock->Size)
+		{
+			TheBlock->Mature=true;
+			if (*Top==NULL)//The only one who could fill NULL top
+			{
+				*Top=TheBlock;
+			}
+			TheBlock=TheBlock->Next;
+			TheBlock->Next=new BrBlock();
+		}
+	}
+	TheBlock->Mature=true;
+	TheBlock->Next->Over=true;
+}
+
+void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName)
+{
+	fprintf(stderr,"Reading %s...\n",SampleFileName);
+	char HDF5FileName[strlen(SampleFileName)+10];
+	strcpy(HDF5FileName,SampleFileName);
+	strcat(HDF5FileName,".hdf5");
+	htsFile* SamFile;//the file of BAM/CRAM
+	bam_hdr_t* Header;//header for BAM/CRAM file
+    SamFile = hts_open(SampleFileName, "rb");
+
+	//set reference file
+	if (NULL != ReferenceFileName)
+	{
+		char referenceFilenameIndex[128];
+		strcpy(referenceFilenameIndex, ReferenceFileName);
+		strcat(referenceFilenameIndex, ".fai");
+		int ret = hts_set_fai_filename(SamFile, referenceFilenameIndex);
+	}
+	Header = sam_hdr_read(SamFile);
+	char SampleName[1024];
+	kstring_t ks=KS_INITIALIZE;
+	ks_resize(&ks,1000);
+	sam_hdr_find_line_pos(Header,"RG",0,&ks);
+	int splitn;
+	int * splitoffsets=ksplit(&ks,'\t',&splitn);
+	for (int i=0;i<splitn;++i)
+	{
+		if (memcmp(ks.s+splitoffsets[i],"SM",2)==0)
+		{
+			int End=ks_len(&ks);
+			if (i<splitn-1) End=splitoffsets[i+1];
+			memcpy(SampleName,ks.s+splitoffsets[i]+3,End-splitoffsets[i]-3);
+			SampleName[End-splitoffsets[i]-3]='\0';
+		}
+	}
+	ks_free(&ks);
+	Contig * Contigs=genCopyOfContigs(ContigModels,NSeq);
+	int CordinTrans[Header->n_targets];
+	for (int i=0;i<Header->n_targets;++i)
+	{
+		bool NoFound=true;
+		for (int j=0;j<NSeq;++j)
+		{
+			if (strcmp(Contigs[j].Name.c_str(),Header->target_name[i])==0)
+			{
+				CordinTrans[i]=j;
+				NoFound=false;
+				break;
+			}
+		}
+		if (NoFound) fprintf(stderr,"[WARN] There's no contig in reference named %s.\n",Header->target_name[i]);
+	}
+
+    bam1_t *br=bam_init1();
+	int ReadCount=0, UnmappedCount=0;
+	while(sam_read1(SamFile, Header, br) >=0)//read record
+	{
+		handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
+	}
+	/*
+	BrBlock * Top[1];
+	*Top=NULL;
+	readBamToBrBlock(SamFile,Header,Top);
+	getBlockAndProcess(Top,Contigs,CordinTrans,ReadCount,UnmappedCount);
+	delete *Top;*/
 
 	for (int i=0;i<NSeq;++i)
 	{
@@ -340,6 +473,22 @@ int main(int argc, char* argv[])
 		Contigs[i].~Contig();
 	}
 	free(Contigs);
-	delete bf;
+	hts_close(SamFile);
+	bam_hdr_destroy(Header);
+}
+
+int main(int argc, char* argv[])
+{
+    char * ReferenceFilename=argv[1];
+	int NSeq;
+	Contig * Contigs=getContigs(ReferenceFilename,&NSeq,RDWindowSize);
+    omp_set_num_threads(2);
+    #pragma omp parallel for
+	for (int i=2;i<argc;++i)
+	{
+		readSam(Contigs,NSeq,ReferenceFilename,argv[i]);
+	}
+	
+	free(Contigs);
     return 0;
 }

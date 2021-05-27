@@ -198,6 +198,8 @@ def readSampleHDF5Data(mygenome, FileName):
         raise(e)
     
     SampleName=HDF5File.attrs["SampleName"]
+    if type(SampleName)!=str:
+        SampleName=str(SampleName.decode())
     SampleReadCount=HDF5File.attrs["SampleReadCount"]
     mygenome.addSample(SampleName)
     if g.RDWindowSize!=HDF5File.attrs["RDWindowSize"]:
