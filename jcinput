@@ -3,7 +3,7 @@
 SCRIPT=$(readlink -f "$0")
 # Absolute path this script is in, thus /home/user/bin
 SCRIPTPATH=$(dirname "$SCRIPT")
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPTPATH/hdf5/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPTPATH/hdf5/lib
 Ref=$1
 shift
 for var in "$@"

@@ -392,11 +392,18 @@ void readBamToBrBlock(htsFile * SamFile,bam_hdr_t *Header, BrBlock** Top)
 	TheBlock->Next->Over=true;
 }
 
-void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, bool UseStdin=false)
+void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, bool UseStdin=false, const char * datadir="data")
 {
 	fprintf(stderr,"Reading %s...\n",SampleFileName);
-	char HDF5FileName[strlen(SampleFileName)+10];
+	char HDF5FileName[strlen(SampleFileName)+strlen(datadir)+10];
 	strcpy(HDF5FileName,SampleFileName);
+	int pathloc=strlen(SampleFileName)-1;
+	for (;pathloc>=0;--pathloc)
+	{
+		if (SampleFileName[pathloc]=='/') break;
+	}
+	strcpy(HDF5FileName,datadir);
+	strcat(HDF5FileName,SampleFileName+pathloc+1);
 	strcat(HDF5FileName,".hdf5");
 	htsFile* SamFile;//the file of BAM/CRAM
 	bam_hdr_t* Header;//header for BAM/CRAM file

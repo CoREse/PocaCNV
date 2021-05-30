@@ -93,6 +93,7 @@ void CgetSP(double *SP, float ** CRDWindowsAcc, unsigned long SampleN, double * 
     {
         SP[0]=0;
         SP[1]=0;
+        return;
     }
     double *SampleRDs=(double*)malloc(SampleN*sizeof(double));
     unsigned long i,j;
