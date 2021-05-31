@@ -9,12 +9,15 @@
 #include "hdf5-1.12.0/src/hdf5.h"
 #include <mutex>
 #include <unistd.h>
-#include <omp.h>
+//#include <omp.h>
 #include "htslib/htslib/bgzf.h"
+#include <thread>
 
 using namespace std;
 
-mutex TopLock, WriteLock;
+const int ReadThreadN=1;
+
+mutex TopLock, WriteLock, StdinLock;
 
 typedef struct Bam_file{
 	bool _is_record_set;//set to 1 when _brec has data
@@ -289,10 +292,14 @@ int RDWindowSize=100;
 
 void handlebr(bam1_t *br, Contig * Contigs, int * CordinTrans, int& ReadCount, int & UnmappedCount)
 {
+		WriteLock.lock();
 		++ReadCount;
+		WriteLock.unlock();
 		if (read_is_unmapped(br))
 		{
+			WriteLock.lock();
 			++UnmappedCount;
+			WriteLock.unlock();
 		}
 		else
 		{
@@ -317,11 +324,11 @@ void handlebr(bam1_t *br, Contig * Contigs, int * CordinTrans, int& ReadCount, i
 			}
 			int Index=(br->core.pos+End)/2/RDWindowSize;
 			float ClipLength=getClipLength(br);
-			//WriteLock.lock();
+			WriteLock.lock();
 			++TheContig.RDWindows[Index];
 			TheContig.AverageClipLengths[Index]+=ClipLength;
 			++TheContig.ContigReadCount;
-			//WriteLock.unlock();
+			WriteLock.unlock();
 		}
 }
 
@@ -392,6 +399,27 @@ void readBamToBrBlock(htsFile * SamFile,bam_hdr_t *Header, BrBlock** Top)
 	TheBlock->Next->Over=true;
 }
 
+void takeStdinAndHandleBr(int &ReadCount, int &UnmappedCount, Contig * Contigs, int * CordinTrans, bam_hdr_t * Header)
+{
+    bam1_t *br=bam_init1();
+	size_t linebuffersize=1024*0124;
+	char * linebuffer=(char*) malloc(linebuffersize);
+	StdinLock.lock();
+	int length=getline(&linebuffer,&linebuffersize,stdin);
+	StdinLock.unlock();
+	while (length>=0)
+	{
+		kstring_t ks={length,linebuffersize,linebuffer};
+		sam_parse1(&ks,Header,br);
+		handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
+		StdinLock.lock();
+		length=getline(&linebuffer,&linebuffersize,stdin);
+		StdinLock.unlock();
+	}
+	free(linebuffer);
+	bam_destroy1(br);
+}
+
 void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, bool UseStdin=false, const char * datadir="data")
 {
 	fprintf(stderr,"Reading %s...\n",SampleFileName);
@@ -403,6 +431,7 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 		if (SampleFileName[pathloc]=='/') break;
 	}
 	strcpy(HDF5FileName,datadir);
+	if (HDF5FileName[strlen(HDF5FileName)-1]!='/') strcat(HDF5FileName,"/");
 	strcat(HDF5FileName,SampleFileName+pathloc+1);
 	strcat(HDF5FileName,".hdf5");
 	htsFile* SamFile;//the file of BAM/CRAM
@@ -452,38 +481,37 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 		if (NoFound) fprintf(stderr,"[WARN] There's no contig in reference named %s.\n",Header->target_name[i]);
 	}
 
-    bam1_t *br=bam_init1();
 	int ReadCount=0, UnmappedCount=0;
-	int LineCount=0;
 	if (UseStdin)
 	{
-		size_t linebuffersize=1024*0124;
-		char * linebuffer=(char*) malloc(linebuffersize);
-		//freopen(NULL,"rb",stdin);
-		//BGZF *In=bgzf_dopen(fileno(stdin),"r");
-		//if (In==0)
-		//{
-		//	fprintf(stderr,"Get pipe failed!");
-		//	return;
-		//}
-		//while (bam_read1(In,br)>=0)
-		int length=getline(&linebuffer,&linebuffersize,stdin);
-		while (length>=0)
+		if (ReadThreadN==1) takeStdinAndHandleBr(ReadCount,UnmappedCount,Contigs,CordinTrans,Header);
+		else
 		{
-			kstring_t ks={length,linebuffersize,linebuffer};
-			sam_parse1(&ks,Header,br);
-			handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
-			length=getline(&linebuffer,&linebuffersize,stdin);
-			++LineCount;
+			thread ** Threads=(thread **)malloc(sizeof(thread)*ReadThreadN);
+			for (int i =0;i<ReadThreadN;++i)
+			{
+				Threads[i]=new thread(takeStdinAndHandleBr,ref(ReadCount),ref(UnmappedCount),Contigs,(int*)CordinTrans,Header);
+			}
+			for (int i=0;i<ReadThreadN;++i)
+			{
+				Threads[i]->join();
+			}
+			
+			for (int i=0;i<ReadThreadN;++i)
+			{
+				delete Threads[i];
+			}
+			free(Threads);
 		}
-		free(linebuffer);
 	}
 	else
 	{
+    	bam1_t *br=bam_init1();
 		while(sam_read1(SamFile, Header, br) >=0)//read record
 		{
 			handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
 		}
+		bam_destroy1(br);
 	}
 	/*
 	BrBlock * Top[1];
