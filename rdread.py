@@ -26,7 +26,7 @@ def readRDDataAndSaveRDF(thegenome, SamplePaths):
             addPool(pool)
             Results=pool.starmap(readSamToRDF,args)
             delPool()
-            pool.terminate()
+            pool.close()
         else:
             Results=[]
             for i in range(len(SAMPaths)):

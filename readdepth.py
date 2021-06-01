@@ -223,7 +223,7 @@ def makeRDEvidences(Data,TheContig,SegData=None,DataAcc=None):#because robjects.
         Evidences=pool.starmap(makeSampleRDEvidences,args)
         print(gettime()+"Intervals for %s made. "%(TheContig.Name)+getMemUsage(),file=sys.stderr)
         delPool()
-        pool.terminate()
+        pool.close()
     #TheContig.Intervals=Intervals
     return Evidences
 

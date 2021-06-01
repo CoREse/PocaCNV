@@ -30,7 +30,7 @@ def readSamAndSaveSD(thegenome, SamplePaths):
             addPool(pool)
             Results=pool.starmap(readSamToSD,args)
             delPool()
-            pool.terminate()
+            pool.close()
         else:
             Results=[]
             for i in range(len(SAMPaths)):
@@ -170,7 +170,7 @@ def readSDDataAll(TheGenome, SampleNames, FileNames):
         addPool(pool)
         Results=pool.starmap(readSampleSDData,args)
         delPool()
-        pool.terminate()
+        pool.close()
         for j in range(len(Results)):
             r=Results[j]
             SampleName=r[0]
@@ -242,7 +242,7 @@ def readHDF5DataAll(TheGenome, SampleNames, FileNames):
         addPool(pool)
         Results=pool.starmap(readSampleHDF5Data,args)
         delPool()
-        pool.terminate()
+        pool.close()
         for j in range(len(Results)):
             r=Results[j]
             SampleName=r[0]
@@ -521,7 +521,7 @@ def readRDDataAll(SampleNames, FileNames):
         Results=pool.starmap(readRDDataNA,args)
         print(gettime()+"RDFs read. "+getMemUsage(),file=sys.stderr)
         delPool()
-        pool.terminate()
+        pool.close()
         for i in range(len(Results)):
             SampleNames.append(Results[i][0])
             g.SampleReadCount.append(Results[i][1])

@@ -179,7 +179,7 @@ def processEvidencesWithDRPsOld(Es, TheContig):
     MaxEnds=pool.map(getMaxEnds,args)
     print(gettime()+"Max Ends made. "+getMemUsage(),file=sys.stderr)
     delPool()
-    pool.terminate()
+    pool.close()
     #ctx=mp.get_context("fork")
     #pool=ctx.Pool(g.ThreadN)
     #addPool(pool)

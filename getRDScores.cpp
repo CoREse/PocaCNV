@@ -232,9 +232,19 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     int SampleN=int(PyList_Size(RDWindowsAcc));
 
     double * SampleReadCount=(double *)malloc(sizeof(double)*SampleN);
+    if (SampleReadCount==NULL)
+    {
+        fprintf(stderr,"Failed to allocate memory for SampleReadCount!\n");
+        exit(1);
+    }
 
     float* *WindowsAcc=(float * *)malloc(sizeof(float*)*SampleN);
-    #pragma omp parallel for
+    if (WindowsAcc==NULL)
+    {
+        fprintf(stderr,"Failed to allocate memory for WindowsAcc!\n");
+        exit(1);
+    }
+    //#pragma omp parallel for
     for (int j=0;j<SampleN;++j)
     {
         WindowsAcc[j]=(float*)malloc(sizeof(float)*(WindowN+1));
@@ -252,6 +262,11 @@ PyObject* getRDScores(PyObject *self, PyObject *args)
     }*/
 
     Cand * Cands=(Cand*)malloc(sizeof(Cand)*Size);
+    if (Cands==NULL)
+    {
+        fprintf(stderr,"Failed to allocate memory for cands!\n");
+        exit(1);
+    }
 
     for (i=0;i<Size;++i)
     {
