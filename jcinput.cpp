@@ -17,6 +17,12 @@ using namespace std;
 
 const int ReadThreadN=1;
 
+float MedianInsertionSize=481.2;
+float ISSD=36.4;
+//bool DynamicDRP=false;
+//int DynamicCount=1000;
+int RDWindowSize=100;
+
 mutex TopLock, WriteLock, StdinLock;
 
 typedef struct Bam_file{
@@ -175,6 +181,15 @@ void saveHDF5(const char * FileName, const char * SampleName, const Contig * Con
 	status = H5Awrite (attr, atype, &RDWindowSize);
 	status = H5Aclose (attr);
 
+	atype = H5Tcopy (H5T_NATIVE_FLOAT);
+	attr = H5Acreate (group_id, "ISAV", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, atype, &MedianInsertionSize);
+	status = H5Aclose (attr);
+
+	atype = H5Tcopy (H5T_NATIVE_FLOAT);
+	attr = H5Acreate (group_id, "ISSD", atype, aid, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, atype, &ISSD);
+	status = H5Aclose (attr);
 
 	status = H5Gclose(group_id);
 	status = H5Sclose (aid);
@@ -286,10 +301,6 @@ struct BrBlock
 	BrBlock& operator=(const BrBlock&);
 };
 
-int MedianInsertionSize=550;
-int ISSD=150;
-int RDWindowSize=100;
-
 void handlebr(bam1_t *br, Contig * Contigs, int * CordinTrans, int& ReadCount, int & UnmappedCount)
 {
 		WriteLock.lock();
@@ -305,10 +316,10 @@ void handlebr(bam1_t *br, Contig * Contigs, int * CordinTrans, int& ReadCount, i
 		{
 			Contig &TheContig=Contigs[CordinTrans[br->core.tid]];
 			int End=bam_endpos(br);
-			if (read_is_paired(br) && read_is_read1(br) && (!read_mate_is_unmapped(br)))
+			if (read_is_paired(br) && (!read_mate_is_unmapped(br)) && br->core.isize>0)
 			{
 				//TODO: change DRP calc way.
-        		int isize=abs(br->core.isize);
+        		int isize=br->core.isize;
 				if (isize> MedianInsertionSize+3*ISSD)
 				{
 					WriteLock.lock();
@@ -542,12 +553,17 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 
 int main(int argc, char* argv[])
 {
-    char * ReferenceFilename=argv[1];
+	float AISAV=-1, AISSD=-1;
+	AISAV=atoi(argv[1]);
+	AISSD=atoi(argv[2]);
+	if (AISAV>0) MedianInsertionSize=AISAV;
+	if (AISSD>0) ISSD=AISSD;
+    char * ReferenceFilename=argv[3];
 	int NSeq;
 	Contig * Contigs=getContigs(ReferenceFilename,&NSeq,RDWindowSize);
     //omp_set_num_threads(2);
     //#pragma omp parallel for
-	for (int i=2;i<argc;++i)
+	for (int i=4;i<argc;++i)
 	{
 		readSam(Contigs,NSeq,ReferenceFilename,argv[i],1);
 	}

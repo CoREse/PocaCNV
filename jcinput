@@ -8,5 +8,5 @@ Ref=$1
 shift
 for var in "$@"
 do
-	samtools view -T $Ref -@ 8 $var | $SCRIPTPATH/jcinputraw $Ref $var
+	samtools view -T $Ref -@ 8 $var | $SCRIPTPATH/jcinputraw `$SCRIPTPATH/getIS $Ref $var` $Ref $var
 done

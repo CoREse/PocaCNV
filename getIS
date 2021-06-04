@@ -1,0 +1,2 @@
+#!/bin/bash
+samtools view -s 0.01 -h $2 -@ 7 -T $1 | samtools stats - | python3 -u getISFromStats.py

@@ -63,8 +63,8 @@ test2122: build
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -C 22 -C 21 > data/test2122.vcf
 	python3 benchmark.py -G ~/data/0/1000gp/chr22_indel_sv_chs.vcf -C 22 data/test2122.vcf
 test22: build
-	#time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.hdf5 -C 22 > data/test22.vcf
-	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CHS/crams/*CHS*.cram.hdf5 -C 22 > data/test22.vcf
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.hdf5 -C 22 > data/test22.vcf
+	#time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CHS/crams/*CHS*.cram.hdf5 -C 22 > data/test22.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf -C 22 -SF /data/0/cre/CHS/samples.txt data/test22.vcf
 testCDX22: build
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -C 22 > data/testCDX22.vcf
@@ -87,8 +87,8 @@ testX:
 testY:
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/0/CHS/*.rdf -C Y > data/testY.vcf
 	python3 benchmark.py -G ~/data/0/ALL.wgs.mergedSV.v8.20130502.svs.genotypes.vcf.gz -C Y data/testY.vcf
-chsedata: cython
-	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -EN CHS > data/edata.vcf
+chsedata: build
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.hdf5 -EN CHS > data/edata.vcf 2>data/chsdata.log
 clmedata: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/clmedata.vcf 2> data/clmedata.log
 cdxedata: cython
@@ -97,10 +97,12 @@ clmwhole: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CLM/*CLM*.cram -EN CLM > data/clmwhole.vcf 2> data/clmwhole.log
 cdxwhole: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CDX/*CDX*.cram -EN CDX > data/cdxwhole.vcf 2> data/cdxwhole.log
+3gcram: build
+	time ./jcinput ~/data/0/hs37d5.fa.gz ~/data/CHS/crams/*.cram ~/data/CDX/*.cram ~/data/CLM/*.cram > logs/3gcram.log 2>&1
 3g: build
-	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.sd -EN CHS > data/test3gCHS.vcf 2> logs/test3g.log
-	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/test3gCDX.vcf 2>> logs/test3g.log
-	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/test3gCLM.vcf 2>> logs/test3g.log
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CHS*.cram.hdf5 -EN CHS > data/test3gCHS.vcf 2> logs/test3g.log
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.hdf5 -EN CDX > data/test3gCDX.vcf 2>> logs/test3g.log
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.hdf5 -EN CLM > data/test3gCLM.vcf 2>> logs/test3g.log
 2g: build
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/test3gCDX.vcf 2>> logs/test3g.log
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/test3gCLM.vcf 2>> logs/test3g.log

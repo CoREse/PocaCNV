@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import sys
 
@@ -42,7 +42,7 @@ ValidatePortion=0.05
 Epsilon=10e-10
 Target=0.2
 LossTarget=10e-10
-print("Target: ",Target)
+print("Target: %s, Command: %s"%(Target,sys.argv))
 
 N=10000000
 D=0
