@@ -12,10 +12,12 @@
 //#include <omp.h>
 #include "htslib/htslib/bgzf.h"
 #include <thread>
+#include <stdexcept>
 
 using namespace std;
 
 const int ReadThreadN=1;
+int ThreadN=8;
 
 float MedianInsertionSize=481.2;
 float ISSD=36.4;
@@ -410,13 +412,13 @@ void readBamToBrBlock(htsFile * SamFile,bam_hdr_t *Header, BrBlock** Top)
 	TheBlock->Next->Over=true;
 }
 
-void takeStdinAndHandleBr(int &ReadCount, int &UnmappedCount, Contig * Contigs, int * CordinTrans, bam_hdr_t * Header)
+void takePipeAndHandleBr(int &ReadCount, int &UnmappedCount, Contig * Contigs, int * CordinTrans, bam_hdr_t * Header, FILE* Pipe=stdin)
 {
     bam1_t *br=bam_init1();
 	size_t linebuffersize=1024*0124;
 	char * linebuffer=(char*) malloc(linebuffersize);
 	StdinLock.lock();
-	int length=getline(&linebuffer,&linebuffersize,stdin);
+	int length=getline(&linebuffer,&linebuffersize,Pipe);
 	StdinLock.unlock();
 	while (length>=0)
 	{
@@ -424,14 +426,14 @@ void takeStdinAndHandleBr(int &ReadCount, int &UnmappedCount, Contig * Contigs, 
 		sam_parse1(&ks,Header,br);
 		handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
 		StdinLock.lock();
-		length=getline(&linebuffer,&linebuffersize,stdin);
+		length=getline(&linebuffer,&linebuffersize,Pipe);
 		StdinLock.unlock();
 	}
 	free(linebuffer);
 	bam_destroy1(br);
 }
 
-void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, bool UseStdin=false, const char * datadir="data")
+void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, const char *DataSource=0, const char * datadir="data")
 {
 	fprintf(stderr,"Reading %s...\n",SampleFileName);
 	char HDF5FileName[strlen(SampleFileName)+strlen(datadir)+10];
@@ -493,15 +495,32 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 	}
 
 	int ReadCount=0, UnmappedCount=0;
-	if (UseStdin)
+	FILE * DSFile=0;
+	if (DataSource!=0)
 	{
-		if (ReadThreadN==1) takeStdinAndHandleBr(ReadCount,UnmappedCount,Contigs,CordinTrans,Header);
+		if (strcmp(DataSource,"-")==0) DSFile=stdin;
+		else
+		{
+			char *cmd=(char*) malloc(102400);
+			cmd[0]='\0';
+			if (strcmp(DataSource,"samtools")==0)
+			{
+				snprintf(cmd,102400,"samtools view -@ %d -T %s %s",ThreadN-ReadThreadN-1,ReferenceFileName,SampleFileName);
+				fprintf(stderr,cmd);
+			}
+			DSFile = popen(cmd, "r");
+			if (!DSFile) throw runtime_error("popen() failed!");
+		}
+	}
+	if (DataSource!=0)
+	{
+		if (ReadThreadN==1) takePipeAndHandleBr(ReadCount,UnmappedCount,Contigs,CordinTrans,Header,DSFile);
 		else
 		{
 			thread ** Threads=(thread **)malloc(sizeof(thread)*ReadThreadN);
 			for (int i =0;i<ReadThreadN;++i)
 			{
-				Threads[i]=new thread(takeStdinAndHandleBr,ref(ReadCount),ref(UnmappedCount),Contigs,(int*)CordinTrans,Header);
+				Threads[i]=new thread(takePipeAndHandleBr,ref(ReadCount),ref(UnmappedCount),Contigs,(int*)CordinTrans,Header,DSFile);
 			}
 			for (int i=0;i<ReadThreadN;++i)
 			{
@@ -523,6 +542,11 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 			handlebr(br,Contigs,CordinTrans,ReadCount,UnmappedCount);
 		}
 		bam_destroy1(br);
+	}
+
+	if (DataSource!=0 && (strcmp(DataSource,"-")!=0))
+	{
+		pclose(DSFile);
 	}
 	/*
 	BrBlock * Top[1];
@@ -558,14 +582,16 @@ int main(int argc, char* argv[])
 	AISSD=atoi(argv[2]);
 	if (AISAV>0) MedianInsertionSize=AISAV;
 	if (AISSD>0) ISSD=AISSD;
-    char * ReferenceFilename=argv[3];
+	const char * DataSource=argv[3];
+	ThreadN=atoi(argv[4]);
+    char * ReferenceFilename=argv[5];
 	int NSeq;
 	Contig * Contigs=getContigs(ReferenceFilename,&NSeq,RDWindowSize);
     //omp_set_num_threads(2);
     //#pragma omp parallel for
-	for (int i=4;i<argc;++i)
+	for (int i=6;i<argc;++i)
 	{
-		readSam(Contigs,NSeq,ReferenceFilename,argv[i],1);
+		readSam(Contigs,NSeq,ReferenceFilename,argv[i],DataSource);
 	}
 	
 	free(Contigs);
