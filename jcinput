@@ -8,6 +8,6 @@ Ref=$1
 shift
 for var in "$@"
 do
-	#$SCRIPTPATH/jcinputraw `$SCRIPTPATH/getIS $Ref $var` $Ref $var
-	$SCRIPTPATH/jcinputraw 481.1 36.6 samtools 8 $Ref $var
+	$SCRIPTPATH/jcinputraw `$SCRIPTPATH/getIS $Ref $var` samtools 8 $Ref $var
+	#$SCRIPTPATH/jcinputraw 481.1 36.6 samtools 8 $Ref $var
 done

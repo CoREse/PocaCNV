@@ -20,7 +20,7 @@ CGetRDScores.so: getRDScores.cpp
 	$(CC) $^ -o $@ -O3 -fPIC -fopenmp -lgsl -lgslcblas -shared -o CGetRDScores.so -I$(INCLUDE) -l$(PYTHON)
 
 jcinputraw: jcinput.cpp
-	$(CC) $^ -o $@ -g -pg -fopenmp -Lhdf5/lib -lhdf5 -Lhtslib -lhts -lz --std=c++11
+	$(CC) $^ -o $@ -O3 -g -pg -fopenmp -Lhdf5/lib -lhdf5 -Lhtslib -lhts -lz --std=c++11
 
 $(DNASEQ):$(DNASEQ_OBJS)
 	$(AR) -rc $@ $(DNASEQ_OBJS)
@@ -93,6 +93,8 @@ clmedata: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CLM*.cram.sd -EN CLM > data/clmedata.vcf 2> data/clmedata.log
 cdxedata: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 data/*CDX*.cram.sd -EN CDX > data/cdxedata.vcf 2> data/cdxedata.log
+chstest: cython
+	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -J 8 -WS 100 ~/data/CHS/crams/*CHS*.cram > data/chstest.vcf 2> data/chstest.log
 clmwhole: cython
 	time $(LAUNCHER) -T ~/data/0/hs37d5.fa.gz -WS 100 ~/data/CLM/*CLM*.cram -EN CLM > data/clmwhole.vcf 2> data/clmwhole.log
 cdxwhole: cython

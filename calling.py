@@ -28,9 +28,14 @@ def getRDScores(Candidates,TheContig,ThreadN=1):
     Scores=CGetRDScores.CGetRDScores(Candidates,TheContig,ThreadN,SampleReadCount)
     print(gettime()+"Filting NN...",file=sys.stderr)
     model=torch.load("data/ScoringTrainModelData",map_location=torch.device('cpu'))
+    dupmodel=None
+    try:
+        dupmodel=torch.load("data/ScoringTrainDupModelData",map_location=torch.device('cpu'))
+    except:
+        dupmodel=None
     for i in range(len(Candidates)):
         #Scores.append(getScore(Candidates[i],TheContig))
-        passNN(Candidates[i],TheContig,Scores[i],(EDF,i),model)
+        passNN(Candidates[i],TheContig,Scores[i],(EDF,i),model,dupmodel)
     if EDF!=None:
         EDF.close()
     return Scores
@@ -128,16 +133,30 @@ def getRDScore(C, TheContig):
         '''
     return 1-CN2L
 
-def passNN(C,TheContig,Score,SegmentFileNNumber,Model):
-    for e in C.Evidences:
-        Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,Score)
-        YP=Model(Traits)
-        #print(Traits,YP,file=sys.stderr)
-        #exit(0)
-        if YP[1]>YP[0]:
-            e.NN=1
-        else:
-            e.NN=0
+def passNN(C,TheContig,Score,SegmentFileNNumber,Model,DupModel=None):
+    if DupModel==None:
+        for e in C.Evidences:
+            Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,Score)
+            YP=Model(Traits)
+            #print(Traits,YP,file=sys.stderr)
+            #exit(0)
+            if YP[1]>YP[0]:
+                e.NN=1
+            else:
+                e.NN=0
+    else:
+        for e in C.Evidences:
+            Traits=printEData(SegmentFileNNumber,TheContig,len(C.Evidences),e,Score)
+            if Traits[9]>1:
+                YP=DupModel(Traits)
+            else:
+                YP=Model(Traits)
+            #print(Traits,YP,file=sys.stderr)
+            #exit(0)
+            if YP[1]>YP[0]:
+                e.NN=1
+            else:
+                e.NN=0
 
 def getScore(C,TheContig):
     return getRDScore(C,TheContig)

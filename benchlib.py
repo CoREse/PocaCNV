@@ -33,6 +33,7 @@ class Variant:
         self.Length=self.End-self.Start
         self.CS=CS
         self.SC=SC
+        self.MatchTo=None
     
     def __str__(self):
         Scores=""
@@ -73,6 +74,14 @@ class Variant:
         if self.Chrom==other.Chrom and self.Start==other.Start and self.End==other.End:
             return False
         return True
+    def __eq__(self,other):
+        if other==None:
+            return False
+        if self<other:
+            return False
+        if self>other:
+            return False
+        return self.Sample==other.Sample
 
 class Sample:
     def __init__(self,Name):
@@ -172,6 +181,7 @@ class Sample:
             for i in range(SI,EI):
                 if self.Variants[i].match(v,Mode):
                     TempPair[0].append(self.Variants[i])
+                    self.Variants[i].MatchTo=v
             if len(TempPair[0])!=0:
                 Result.append(TempPair)
         return Result
@@ -228,7 +238,7 @@ class VariantRecords:
                 RSamples[SN]=None
         return Result
     
-    def interpret(self,maresult,PR=False):
+    def interpret(self,maresult,PR=False,Merged=(0,0,0,0)):
         OtherN=0
         SelfN=0
         Matched=0
@@ -257,7 +267,6 @@ class VariantRecords:
                 OtherDelN+=1
             elif v.Type.upper()=="DUP":
                 OtherDupN+=1
-        
         for SN in Other.Samples.keys():
             if RSamples[SN]!=None:
                 Matched+=len(RSamples[SN])
@@ -269,6 +278,13 @@ class VariantRecords:
                     elif RSamples[SN][i][1].Type.upper()=="DUP":
                         MatchedDup+=1
                         SelfMatchedDup+=len(RSamples[SN][i][0])
+        SelfDelN-=Merged[0]
+        SelfDupN-=Merged[1]
+        SelfN-=Merged[1]+Merged[0]
+        SelfMatchedDel-=Merged[2]
+        SelfMatchedDup-=Merged[3]
+        SelfMatched-=Merged[2]+Merged[3]
+
         AS=Matched/OtherN if OtherN!=0 else 0
         AP=SelfMatched/SelfN if SelfN!=0 else 0
         AF1=2*(AS*AP)/(AS+AP) if (AS+AP)!= 0 else 0
@@ -292,6 +308,7 @@ class VariantRecords:
                             if j!=0:
                                 Out+=","
                             Out+="%s"%RSamples[SN][i][0][j]
+        Out+="\n%s\t%s\t%s\t%s\n%s\t%s\t%s\t%s"%(OtherDelN,MatchedDel,SelfDelN,SelfMatchedDel,OtherDupN,MatchedDup,SelfDupN,SelfMatchedDup)
         return Out
     
     def parseVcfCNV(self,filename,contigs=None,samples=None,MinLength=0,MaxAF=1,MinScore=0):

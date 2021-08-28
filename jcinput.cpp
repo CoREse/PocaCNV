@@ -435,6 +435,12 @@ void takePipeAndHandleBr(int &ReadCount, int &UnmappedCount, Contig * Contigs, i
 
 void readSam(const Contig * ContigModels, const int NSeq, const char * ReferenceFileName, const char * SampleFileName, const char *DataSource=0, const char * datadir="data")
 {
+	int Namelen=strlen(SampleFileName);
+	if ((strcmp(SampleFileName+max(int(strlen(SampleFileName))-4,0),".sam")!=0) && (strcmp(SampleFileName+max(int(strlen(SampleFileName))-4,0),".bam")!=0) && (strcmp(SampleFileName+max(int(strlen(SampleFileName))-5,0),".cram")!=0))
+	{
+		printf("%s\n",SampleFileName);
+		return;
+	}
 	fprintf(stderr,"Reading %s...\n",SampleFileName);
 	char HDF5FileName[strlen(SampleFileName)+strlen(datadir)+10];
 	strcpy(HDF5FileName,SampleFileName);
@@ -565,6 +571,7 @@ void readSam(const Contig * ContigModels, const int NSeq, const char * Reference
 	}
 
 	saveHDF5(HDF5FileName, SampleName, Contigs, NSeq, ReadCount,RDWindowSize);
+	printf("%s\n",HDF5FileName);
 
 	for (int i=0;i<NSeq;++i)
 	{

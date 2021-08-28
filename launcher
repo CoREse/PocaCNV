@@ -4,6 +4,10 @@
 import sys
 import subprocess
 import pysam
+import time
+
+def gettime():
+    return time.strftime("[%Y.%m.%d,%H:%M:%S]",time.localtime())
 
 def usage():
     print("""launcher [ARGs] -T ReferenceFile SampleFile1.sam/bam/cram SampleFile2.sam/bam/cram ...
@@ -28,39 +32,59 @@ def getParas(argv):
             a=argv[i]
             if a=='-T' or a=="--Reference":
                 ReferencePath.append(argv[i+1])
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=='-WO':
                 WriteRDData=True
                 WriteRDDataOnly[0]=True
+                Options.append(a)
             elif a=="-WM":
                 WriteMixedRDData=True
+                Options.append(a)
             elif a=='-C':
                 ContigsToGo.add(argv[i+1])
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=='-J' or a=='-j':
                 ThreadN=int(argv[i+1])
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=='-JR':
                 ThreadNR=int(argv[i+1])
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=='-WS':
                 RDWindowSize=int(argv[i+1])
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=="-DC":
                 DumpCandidates=argv[i+1]
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=="-LC":
                 LoadCandidates=argv[i+1]
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=="-EN":
                 EDataName=argv[i+1]
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             elif a=="-EP":
                 EDataPath=argv[i+1]
+                Options.append(a)
+                Options.append(argv[i+1])
                 i+=1
             else:
                 SamplePaths.append(argv[i])
-                if argv[i].split(".")[-1]!="sd":
+                if argv[i].split(".")[-1]!="sd" and argv[i].split(".")[-1]!="hdf5":
                     HasSam[0]=True
         except Exception as e:
             print(e,file=sys.stderr)
@@ -73,6 +97,9 @@ def getParas(argv):
 PythonName="python3"
 ProgramName="jcrd.py"
 
+print(gettime()+"Start the program %s"%(sys.argv),file=sys.stderr)
+
+Options=[]
 ReferencePath=[]
 SamplePaths=[]
 ContigsToGo=set()
@@ -85,11 +112,16 @@ getParas(sys.argv)
 WriteRDDataOnly=WriteRDDataOnly[0]
 HasSam=HasSam[0]
 if HasSam:
+    print(gettime()+"Reading S[B/CR]AMs...",file=sys.stderr)
+    #SamplePaths=[]
+    #args=sys.argv[1:]
+    #if not WriteRDDataOnly:
+    #    args.append("-WO")
+    #run=subprocess.Popen([PythonName,"-u",ProgramName]+args,bufsize=1,stdout=subprocess.PIPE,universal_newlines=True)
+    RunCommand=["./jcinput",ReferencePath[0]]+ SamplePaths
+    print(gettime()+"Running %s..."%(RunCommand),file=sys.stderr)
+    run=subprocess.Popen(RunCommand, bufsize=1, stdout=subprocess.PIPE, universal_newlines=True)
     SamplePaths=[]
-    args=sys.argv[1:]
-    if not WriteRDDataOnly:
-        args.append("-WO")
-    run=subprocess.Popen([PythonName,"-u",ProgramName]+args,bufsize=1,stdout=subprocess.PIPE,universal_newlines=True)
     while True:
         line=run.stdout.readline()
         if line=="":
@@ -125,15 +157,18 @@ while i < len(sys.argv):
 import pickle
 import codecs
 FirstContig=True
+print(gettime()+"Start calling...",file=sys.stderr)
 for c in Contigs:
-    cargs=args.copy()
+    cargs=Options.copy()+SamplePaths
     cargs.append("-C")
     cargs.append(c[0])
     if FirstContig:
         cargs.append("-PH")
         cargs.append(codecs.encode(pickle.dumps(Contigs), "base64").decode())
         FirstContig=False
-    run=subprocess.Popen([PythonName,"-u",ProgramName]+cargs)
+    RunCommand=[PythonName,"-u",ProgramName]+cargs
+    print(gettime()+"Running %s..."%(RunCommand),file=sys.stderr)
+    run=subprocess.Popen(RunCommand)
     run.wait()
     run.terminate()
     run.kill()
